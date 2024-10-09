@@ -3,10 +3,7 @@ from flask_session import Session
 import sqlite3
 from hashlib import md5
 from functools import wraps
-import chess
-
-board = chess.Board()
-
+from Chess import movepiece, undomove, show_moves
 app = Flask(__name__)
 
 # TODO make database named users.db
