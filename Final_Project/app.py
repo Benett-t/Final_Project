@@ -28,7 +28,11 @@ def after_request(response):
 def index():
     #Landing page after login
 
-    return render_template("index.html")
+    #Temporary simulate loged in user:
+
+    login = 1
+
+    return render_template("index.html", login=login)
 
 def login_required(f):
 
@@ -54,3 +58,12 @@ def login():
         else:
             pass
             # TODO first have to make login.html
+
+@app.route("/tictactoe")
+def tictactoe():
+
+    #Temporary simulate loged in user:
+
+    login=1
+
+    return render_template("tictactoe.html", login=login)
