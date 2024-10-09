@@ -1,3 +1,3 @@
-The final project
+Final project.
 
-Szia
+games: TicTacToe, Chess, rock paper scissors
