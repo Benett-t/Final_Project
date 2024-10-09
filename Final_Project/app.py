@@ -3,6 +3,9 @@ from flask_session import Session
 import sqlite3
 from hashlib import md5
 from functools import wraps
+import chess
+
+board = chess.Board()
 
 app = Flask(__name__)
 
