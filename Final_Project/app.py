@@ -2,6 +2,7 @@ from flask import session, Flask, render_template, request, redirect
 from flask_session import Session
 import sqlite3
 from hashlib import md5
+from functools import wraps
 
 app = Flask(__name__)
 
@@ -20,3 +21,14 @@ def index():
     #Landing page after login
 
     return render_template("index.html")
+
+def login_required(f):
+
+    # ez kell hogy brijuk ugy hogy @login_required
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # if no session
+        if session.get("user_id") is None:
+            return redirect("/login")
+    return decorated_function
+
