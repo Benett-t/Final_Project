@@ -1,4 +1,6 @@
 import chess
+import uuid
+import hashlib
 
 board = chess.Board()
 
@@ -13,5 +15,3 @@ def undomove():
 def show_moves(piece):
     # TODO 
     pass
-
-
