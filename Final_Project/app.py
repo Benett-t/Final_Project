@@ -69,4 +69,5 @@ def tictactoe():
     #player variable
     player = "X"
 
+
     return render_template("tictactoe.html", login=login, player=player)

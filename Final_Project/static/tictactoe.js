@@ -27,3 +27,12 @@ cells.forEach(cell => {
         }
     });
 });
+
+// pseudo code for js
+
+// turn based logic X, O
+
+// track player turn
+
+// check state of the board to determine if there is a winner
+
