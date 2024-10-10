@@ -8,20 +8,28 @@
 
     
     <h1>Play Tic Tac Toe</h1>
+    <div class="tic">
+        <table class="tictac">
+            <tr>
 
-        <table class="table table-bordered">
-            <tr></tr>
-                <td></td>
-                <td></td>
-                <td></td>
-            <tr></tr>
-                <td></td>
-                <td></td>
-                <td></td>
-            <tr></tr>
-                <td></td>
-                <td></td>
-                <td></td>
+           
+                <td class="td"></td>
+                <td class="td"></td>
+                <td class="td"></td>
+            </tr>
+            <tr>
+                <td class="td"></td>
+                <td class="td"></td>
+                <td class="td"></td>
+            </tr>
+            <tr>
+                <td class="td"></td>
+                <td class="td"></td>
+                <td class="td"></td>
+            </tr>
         </table>
-  
+
+        <script src="{{ url_for('static', filename='tictactoe.js') }}">
+        </script>
+  </div>
 {% endblock %}

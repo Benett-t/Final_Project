@@ -1,3 +1,26 @@
-td {
-    aspect-ratio: 1;
+.tictac {
+    width: 50vw;
+    aspect-ratio: 1 / 1;
+    border-collapse: collapse;
+    table-layout: fixed;
+    text-align: center;
+}
+
+.tic {
+    height: 50%;
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding-top: 20px;
+}
+
+.td {
+    height: 33.33%;
+    display: flexbox;
+    justify-content: center;
+    align-items: center;
+    border: 5px solid black;
+    font-size: calc(10vw);
+    font-family: 'Patrick Hand', Cursive;
 }
