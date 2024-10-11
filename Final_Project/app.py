@@ -1,7 +1,7 @@
 from flask import session, Flask, render_template, request, redirect
 from flask_session import Session
 import sqlite3
-from hashlib import sha256, sha1
+import bcrypt
 from functools import wraps
 from Chess import movepiece, undomove, show_moves
 from uuid import uuid5, uuid4
@@ -72,7 +72,6 @@ def login():
                 return render_template("login.html", placeholder="Missing password or username")
             
             password = password.encode("utf-8")
-            phash = sha256(password).hexdigest()
 
             db = sqlite3.connect("users.db")
             cursor = db.cursor()
@@ -83,10 +82,10 @@ def login():
                 db.execute("BEGIN TRANSACTION")
 
                 cursor.execute("SELECT uuid, hash FROM users WHERE username = ?", (username,))
-                users = cursor.fetchone()
+                user = cursor.fetchone()
                 
-                if users[1] == phash:
-                    session["user_id"] = users[0]
+                if user and bcrypt.checkpw(password=password, hashed_password=user[1]):
+                    session["user_id"] = user[0]
                     return redirect("/")
 
                 else:
@@ -95,6 +94,9 @@ def login():
             except sqlite3.Error as e:
                 print(f"DB error: {e}")
                 return render_template("login.html", placeholder="Something went wrong")
+            finally:
+                cursor.close()
+                db.close()
 
 
 
@@ -126,7 +128,7 @@ def register():
                 return render_template("register.html", placeholder="Passwords must be atleast 8 characters")
             
             password2 = password.encode("utf-8")
-            phash = sha256(password2)
+            phash = bcrypt.hashpw(password=password2, salt=bcrypt.gensalt())
 
             db = sqlite3.connect("users.db")
             cursor = db.cursor()
@@ -136,7 +138,7 @@ def register():
                 # begain transaction
                 db.execute("BEGIN TRANSACTION")
 
-                cursor.execute("INSERT INTO users (uuid, hash, username) VALUES(?, ?, ?)", (str(uuid4()), phash.hexdigest(), username))
+                cursor.execute("INSERT INTO users (uuid, hash, username) VALUES(?, ?, ?)", (str(uuid4()), phash, username))
 
                 db.commit()
 
