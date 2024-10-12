@@ -43,7 +43,7 @@ function renderBoard(fen) {
                 const img = document.createElement('img');
                 img.src = `/static/images/chess/${pieceImages[piece]}.png`;
                 img.alt = piece;
-                img.draggable = true;
+                img.draggable = false;
                 img.classList.add('piece-img');
                 square.appendChild(img);
                 col++; // Increment for pieces
@@ -119,31 +119,50 @@ function submitMove(move, square) {
 }
 
 function updateBoard(move, is_checkmate, white, black) {
-    const fromSquare = move.slice(0, 2)
-    const toSquare = move.slice(2)
-    const piece = boardState[fromSquare]
-    const toElement = document.querySelector(`[data-square='${toSquare}']`)
-    const fromElement = document.querySelector(`[data-square='${fromSquare}']`)
+    const fromSquare = move.slice(0, 2);
+    const toSquare = move.slice(2);
+    const piece = boardState[fromSquare];
+    const toElement = document.querySelector(`[data-square='${toSquare}']`);
+    const fromElement = document.querySelector(`[data-square='${fromSquare}']`);
 
     if (toElement && fromElement) {
-        toElement.innerHTML = `<img src="/static/images/chess/${pieceImages[piece]}.png" alt="${piece}" class="piece-img">`;
-        fromElement.innerHTML = ''; // Clear the from square
+        // Get positions of the source and target squares for animation
+        const fromRect = fromElement.getBoundingClientRect();
+        const toRect = toElement.getBoundingClientRect();
 
-        boardState[toSquare] = piece; // Update the new position
-        delete boardState[fromSquare]; // Remove the piece from the old position
-        if (is_checkmate == true) {
-            console.log(white)
-            console.log(black)
-            if (white == true) {
-                alert("WHITE WON!")
-            }
-            else if (black == true) {
-                alert("BLACK WON!")
-            }
+        const img = fromElement.querySelector('img');
+
+        if (img) {
+            // Calculate the translation for animation
+            const deltaX = toRect.left - fromRect.left;
+            const deltaY = toRect.top - fromRect.top;
+
+            // Apply the transform to animate the piece
+            img.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+
+            // Once the transition is over, move the piece to the new square
+            setTimeout(() => {
+                toElement.innerHTML = `<img src="/static/images/chess/${pieceImages[piece]}.png" alt="${piece}" class="piece-img">`;
+                fromElement.innerHTML = ''; // Clear the from square
+                img.style.transform = ''; // Reset the transform
+
+                // Update the board state
+                boardState[toSquare] = piece;
+                delete boardState[fromSquare];
+
+                if (is_checkmate == true) {
+                    if (white == true) {
+                        alert("WHITE WON!");
+                    } else if (black == true) {
+                        alert("BLACK WON!");
+                    }
+                }
+            }, 500); // Match the duration of the CSS transition
         }
     }
+}
 
-} 
+
 // Initial board render
 $(document).ready(function() {
     renderBoard(boardFen);  // boardFen will be passed from the server-side
