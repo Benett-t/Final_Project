@@ -110,7 +110,7 @@ function submitMove(move, square) {
         contentType: "application/json",
         data: JSON.stringify({ move: move }),
         success: function(response) {
-            updateBoard(move, response.is_checkmate, response.white, response.black);
+            updateBoard(move, response.is_checkmate, response.white, response.black, response.wpromotion, response.bpromotion);
         },
         error: function(response) {
             square.classList.remove('selected')
@@ -118,12 +118,20 @@ function submitMove(move, square) {
     });
 }
 
-function updateBoard(move, is_checkmate, white, black) {
+function updateBoard(move, is_checkmate, white, black, wpromotion, bpromotion) {
     const fromSquare = move.slice(0, 2);
     const toSquare = move.slice(2);
-    const piece = boardState[fromSquare];
+    var piece = boardState[fromSquare];
     const toElement = document.querySelector(`[data-square='${toSquare}']`);
     const fromElement = document.querySelector(`[data-square='${fromSquare}']`);
+
+
+    if (wpromotion == true) {
+        piece = 'Q'
+    }
+    else if (bpromotion == true) {
+        piece = 'q'
+    }
 
     if (toElement && fromElement) {
         // Get positions of the source and target squares for animation
@@ -141,7 +149,8 @@ function updateBoard(move, is_checkmate, white, black) {
             img.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
 
             // Once the transition is over, move the piece to the new square
-            setTimeout(() => {
+            setTimeout(() => { 
+                console.log(piece)
                 toElement.innerHTML = `<img src="/static/images/chess/${pieceImages[piece]}.png" alt="${piece}" class="piece-img">`;
                 fromElement.innerHTML = ''; // Clear the from square
                 img.style.transform = ''; // Reset the transform

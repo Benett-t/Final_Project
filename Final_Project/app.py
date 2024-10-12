@@ -196,14 +196,46 @@ def move_piece():
     
     move = data['move']
 
-    print(move)
     
     try:
+        board_fen = board.fen()
         chess_move = chess.Move.from_uci(move)
+        piece = board.piece_at(chess_move.from_square)
+        print(piece)
+        print (chess_move.from_square)
 
-        if chess_move in board.legal_moves:
+        if str(piece) == 'P' and chess.square_rank(chess_move.from_square) == 6:
+            chess_move = chess.Move.from_uci(move + 'q')
             board.push(chess_move)
-            board_fen = board.fen()  # Get the updated board state
+
+            if board.is_checkmate() == True:
+                if board.outcome().winner == chess.WHITE:
+                    board.reset()
+                    return jsonify({"success": True, "board_fen": board_fen, "is_checkmate": True, "white": True})
+                else:
+                    board.reset()
+                    return jsonify({"success": True, "board_fen": board_fen, "is_checkmate": True, "black": True})
+                
+            return jsonify({"success": True, "board_fen": board_fen, "is_checkmate" : False, "wpromotion": True})
+        
+        elif str(piece) == 'p' and chess.square_rank(chess_move.from_square) == 1:
+            chess_move = chess.Move.from_uci(move + 'q')
+            board.push(chess_move)
+
+            if board.is_checkmate() == True:
+                if board.outcome().winner == chess.WHITE:
+                    board.reset()
+                    return jsonify({"success": True, "board_fen": board_fen, "is_checkmate": True, "white": True})
+                else:
+                    board.reset()
+                    return jsonify({"success": True, "board_fen": board_fen, "is_checkmate": True, "black": True})
+                
+            return jsonify({"success": True, "board_fen": board_fen, "is_checkmate" : False, "bpromotion": True})
+            
+        elif chess_move in board.legal_moves:
+            board.push(chess_move)
+
+            
             if board.is_checkmate() == True:
                 if board.outcome().winner == chess.WHITE:
                     board.reset()
