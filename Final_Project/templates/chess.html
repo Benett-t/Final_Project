@@ -1,0 +1,16 @@
+{% extends "layout.html" %}
+
+{% block title %}Chess{% endblock %}
+
+
+{% block main %}
+<h2>Chess</h2>
+<h2 id="win"></h2>
+<div class="board_container">
+    <div id="chessboard" class="mx-auto"></div>
+    <script>
+        var boardFen = "{{ board_fen }}";
+    </script>
+    <script src="/static/chess.js"></script>
+</div>
+{% endblock %}

@@ -1,6 +1,4 @@
 import chess
-import uuid
-import hashlib
 
 board = chess.Board()
 

@@ -1,14 +1,14 @@
-from flask import session, Flask, render_template, request, redirect
+from flask import session, Flask, render_template, request, redirect, jsonify
 from flask_session import Session
 import sqlite3
 import bcrypt
 from functools import wraps
-from Chess import movepiece, undomove, show_moves
+import chess
 from uuid import uuid5, uuid4
 
 app = Flask(__name__)
 
-
+board = chess.Board()
 # after closing website session deletes set to True if you want permament session.
 app.config["SESSION_PERMANENT"] = False
 # Save session in filesystem insted of browser
@@ -178,3 +178,43 @@ def tictactoe():
 
 
     return render_template("tictactoe.html", login=1, player=player)
+
+@app.route("/chessboard")
+@login_required
+def chessboard():
+    # get board state
+    board_fen = board.fen()
+    return render_template("chess.html", board_fen=board_fen, login=1)
+
+@app.route("/move_piece", methods=["POST"])
+@login_required
+def move_piece():
+    data = request.get_json()
+
+    if not data or 'move' not in data:
+        return jsonify({'error': 'Invalid request, move data missing'}), 400
+    
+    move = data['move']
+
+    print(move)
+    
+    try:
+        chess_move = chess.Move.from_uci(move)
+
+        if chess_move in board.legal_moves:
+            board.push(chess_move)
+            board_fen = board.fen()  # Get the updated board state
+            if board.is_checkmate() == True:
+                if board.outcome().winner == chess.WHITE:
+                    board.reset()
+                    return jsonify({"success": True, "board_fen": board_fen, "is_checkmate": True, "white": True})
+                else:
+                    board.reset()
+                    return jsonify({"success": True, "board_fen": board_fen, "is_checkmate": True, "black": True})
+                
+
+            return jsonify({"success": True, "board_fen": board_fen, "is_checkmate" : False})
+        else:
+            return jsonify({"success": False, "error": "Invalid move"}), 400
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
