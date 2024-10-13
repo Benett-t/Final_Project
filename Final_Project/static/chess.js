@@ -10,6 +10,8 @@ let selectedSquareData = null;
 let boardState = {}; // keep track of pos
 let draggedPiece = null;
 let sourceSquare = null;
+let dragGhost = null;
+let isDragging = false;
 
 // Render the board based on the FEN string
 function renderBoard(fen) {
@@ -74,6 +76,8 @@ function renderBoard(fen) {
                 const img = document.createElement('img');
                 img.src = `/static/images/chess/${pieceImages[piece]}.png`;
                 img.alt = piece;
+                img.draggable = true;
+                img.addEventListener("dragstart", handleDragStart)
                 img.classList.add('piece-img');
                 square.appendChild(img);
                 col++; // Increment for pieces
@@ -148,7 +152,7 @@ function handleSquareClick(square) {
     if (selectedSquare) {
         selectedSquare.classList.remove('selected')
         const move = selectedSquare.dataset.square + squareData;
-        submitMove(move, selectedSquare);
+        submitMove(move, selectedSquare, null);
         selectedSquare = null;
         selectedPiece = null;
     } else {
@@ -158,17 +162,101 @@ function handleSquareClick(square) {
             square.classList.add('selected')
         }
     }
+    isDragging = false;
 }
 
+function handleDragStart(event) {
+    const squares = document.querySelectorAll('.selected')
+
+    squares.forEach(square => {
+        square.classList.remove('selected')
+    });
+    
+    isDragging = true;
+    draggedPiece = event.target;
+    sourceSquare = event.target.parentElement.dataset.square;
+    event.preventDefault();
+
+    // Create ghost
+    dragGhost = document.createElement('img');
+    dragGhost.src = draggedPiece.src;
+    dragGhost.classList.add('drag-ghost');
+    dragGhost.style.transform = 'scale(0.52)'; 
+    dragGhost.style.position = 'absolute'; 
+    dragGhost.style.pointerEvents = 'none'; 
+    dragGhost.style.zIndex = '9999';
+
+    document.body.appendChild(dragGhost);
+
+
+    setTimeout(() => {
+        // Remove the original piece image after the ghost is created
+        draggedPiece.style.visibility = 'hidden';  
+    }, 1)
+
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp)
+}
+
+function handleMouseMove(event) {
+    if (dragGhost) {
+        // center
+        const offsetX = dragGhost.width / 2;
+        const offsetY = dragGhost.height / 2;
+
+        dragGhost.style.left = (event.pageX - offsetX) + 'px';
+        dragGhost.style.top = (event.pageY - offsetY) + 'px';
+    }
+}
+
+function handleMouseUp(event) {
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+
+    let targetSquare = document.elementFromPoint(event.clientX, event.clientY).dataset.square;
+    if (targetSquare == null) {
+        targetSquare = document.elementFromPoint(event.clientX, event.clientY).parentElement.dataset.square;
+    }
+
+    if (draggedPiece && sourceSquare && targetSquare) {
+        const move = sourceSquare + targetSquare;
+        submitMove(move, null, (isValidMove) => {
+            if (!isValidMove) {
+                    draggedPiece.style.visibility = 'visible';
+                    animatePieceBackToSource();
+        }});
+    }
+    else {
+        animatePieceBackToSource();
+    }
+
+    // clean up
+    if (dragGhost) {
+        dragGhost.remove();
+        dragGhost = null;
+    }
+    if (!targetSquare) {
+        draggedPiece.style.visibility = 'visible';
+    }
+    setTimeout(() => {
+        draggedPiece = null;
+    }, 20);
+    sourceSquare = null;
+}
+
+
+
 // Send the move to the server
-function submitMove(move, square) {
+function submitMove(move, square, callback = () => {}) {
     $.ajax({
         url: "/move_piece",
         method: "POST",
         contentType: "application/json",
         data: JSON.stringify({ move: move }),
         success: function(response) {
-            updateBoard(move, response.is_checkmate, response.white, response.black, response.wpromotion, response.bpromotion);
+            updateBoard(move, response.is_checkmate, response.white, response.black, response.wpromotion, response.bpromotion, response.stalemate);
+            callback(true);
             if (response.OO == true) {
                 updateBoard('h1f1');
             }
@@ -183,19 +271,32 @@ function submitMove(move, square) {
             }
         },
         error: function(response) {
+            callback(false);
             square.classList.remove('selected')
         }
     });
 }
 
-function updateBoard(move, is_checkmate, white, black, wpromotion, bpromotion) {
+
+function animatePieceBackToSource() {
+    const fromElement = document.querySelector(`[data-square='${sourceSquare}']`);
+    
+    if (draggedPiece) {
+        draggedPiece.style.visibility = 'visible';
+        draggedPiece.style.transform = '';
+        fromElement.appendChild(draggedPiece);
+    }
+}
+
+
+function updateBoard(move, is_checkmate, white, black, wpromotion, bpromotion, stalemate) {
     const fromSquare = move.slice(0, 2);
     const toSquare = move.slice(2);
     var piece = boardState[fromSquare];
     const toElement = document.querySelector(`[data-square='${toSquare}']`);
     const fromElement = document.querySelector(`[data-square='${fromSquare}']`);
 
-
+    
     if (wpromotion == true) {
         piece = 'Q'
     }
@@ -211,51 +312,105 @@ function updateBoard(move, is_checkmate, white, black, wpromotion, bpromotion) {
         const img = fromElement.querySelector('img');
 
         if (img) {
-            // Calculate the translation for animation
-            const deltaX = toRect.left - fromRect.left;
-            const deltaY = toRect.top - fromRect.top;
+            if (isDragging == false) {
+                // Calculate the translation for animation
+                const deltaX = toRect.left - fromRect.left;
+                const deltaY = toRect.top - fromRect.top;
 
-            // Apply the transform to animate the piece
-            img.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+                // Apply the transform to animate the piece
+                img.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
 
-            // Once the transition is over, move the piece to the new square
-            setTimeout(() => { 
-                console.log(piece)
-                const fromrowlabel = fromElement.querySelector('.col-label')
-                const fromcollablel = fromElement.querySelector('.row-label')
+                // Once the transition is over, move the piece to the new square
+                setTimeout(() => { 
+                    console.log(piece)
+                    const fromrowlabel = fromElement.querySelector('.col-label')
+                    const fromcollablel = fromElement.querySelector('.row-label')
 
-                const torowlabel = toElement.querySelector('.col-label')
-                const tocollablel = toElement.querySelector('.row-label')
+                    const torowlabel = toElement.querySelector('.col-label')
+                    const tocollablel = toElement.querySelector('.row-label')
 
-                toElement.innerHTML = `<img src="/static/images/chess/${pieceImages[piece]}.png" alt="${piece}" class="piece-img">`;
-                fromElement.innerHTML = ''; // Clear the from square
-                img.style.transform = ''; // Reset the transform
-    
-                if (fromcollablel) {
-                    fromElement.appendChild(fromcollablel);
-                } 
-                if (fromrowlabel) {
-                    fromElement.appendChild(fromrowlabel);
-                }
-                if (torowlabel) {
-                    toElement.appendChild(torowlabel);
-                }
-                if (tocollablel) {
-                    toElement.appendChild(tocollablel);
-                }
+                    toElement.innerHTML = `<img src="/static/images/chess/${pieceImages[piece]}.png" alt="${piece}" class="piece-img">`;
+                    
+                    const newimg = toElement.querySelector('img');
+                    newimg.addEventListener('dragstart', handleDragStart);
 
-                // Update the board state
-                boardState[toSquare] = piece;
-                delete boardState[fromSquare];
-
-                if (is_checkmate == true) {
-                    if (white == true) {
-                        alert("WHITE WON!");
-                    } else if (black == true) {
-                        alert("BLACK WON!");
+                    fromElement.innerHTML = ''; // Clear the from square
+                    img.style.transform = ''; // Reset the transform
+        
+                    if (fromcollablel) {
+                        fromElement.appendChild(fromcollablel);
+                    } 
+                    if (fromrowlabel) {
+                        fromElement.appendChild(fromrowlabel);
                     }
-                }
-            }, 500); // Match the duration of the CSS transition
+                    if (torowlabel) {
+                        toElement.appendChild(torowlabel);
+                    }
+                    if (tocollablel) {
+                        toElement.appendChild(tocollablel);
+                    }
+
+                    // Update the board state
+                    boardState[toSquare] = piece;
+                    delete boardState[fromSquare];
+
+                    if (is_checkmate == true) {
+                        if (white == true) {
+                            alert("WHITE WON!");
+                        } else if (black == true) {
+                            alert("BLACK WON!");
+                        }
+                    }
+                    if (stalemate == true) {
+                        alert("STALEMATE");
+                    }
+                }, 500);
+            }
+            else {
+                    isDragging = false;
+                    console.log(piece)
+                    const fromrowlabel = fromElement.querySelector('.col-label')
+                    const fromcollablel = fromElement.querySelector('.row-label')
+
+                    const torowlabel = toElement.querySelector('.col-label')
+                    const tocollablel = toElement.querySelector('.row-label')
+
+                    toElement.innerHTML = `<img src="/static/images/chess/${pieceImages[piece]}.png" alt="${piece}" class="piece-img">`;
+                    
+                    const newimg = toElement.querySelector('img');
+                    newimg.addEventListener('dragstart', handleDragStart);
+
+                    fromElement.innerHTML = ''; // Clear the from square
+                    img.style.transform = ''; // Reset the transform
+        
+                    if (fromcollablel) {
+                        fromElement.appendChild(fromcollablel);
+                    } 
+                    if (fromrowlabel) {
+                        fromElement.appendChild(fromrowlabel);
+                    }
+                    if (torowlabel) {
+                        toElement.appendChild(torowlabel);
+                    }
+                    if (tocollablel) {
+                        toElement.appendChild(tocollablel);
+                    }
+
+                    // Update the board state
+                    boardState[toSquare] = piece;
+                    delete boardState[fromSquare];
+
+                    if (is_checkmate == true) {
+                        if (white == true) {
+                            alert("WHITE WON!");
+                        } else if (black == true) {
+                            alert("BLACK WON!");
+                        }
+                    }
+                    if (stalemate == true) {
+                        alert("STALEMATE");
+                    }
+            } 
         }
     }
 }

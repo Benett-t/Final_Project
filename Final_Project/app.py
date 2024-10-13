@@ -204,22 +204,22 @@ def move_piece():
         print(piece)
         print (chess_move.from_square)
 
-        if str(piece) == 'K' and chess_move.from_square == 4 and chess_move.to_square == 6 and board.has_kingside_castling_rights == True:
+        if str(piece) == 'K' and chess_move.from_square == 4 and chess_move.to_square == 6 and board.has_kingside_castling_rights(chess.WHITE) == True:
             board.push(chess_move)
             print("trying to castle short side")
             return jsonify({"success": True, "board_fen": board_fen, 'OO': True})
         
-        elif str(piece) == 'K' and chess_move.from_square == 4 and chess_move.to_square == 2 and board.has_queenside_castling_rights == True:
+        elif str(piece) == 'K' and chess_move.from_square == 4 and chess_move.to_square == 2 and board.has_queenside_castling_rights(chess.WHITE) == True:
             board.push(chess_move)
             print("trying to castle short side")
             return jsonify({"success": True, "board_fen": board_fen, 'OOO': True})
         
-        elif str(piece) == 'k' and chess_move.from_square == 60 and chess_move.to_square == 62 and board.has_kingside_castling_rights == True:
+        elif str(piece) == 'k' and chess_move.from_square == 60 and chess_move.to_square == 62 and board.has_kingside_castling_rights(chess.BLACK) == True:
             board.push(chess_move)
             print("trying to castle short side")
             return jsonify({"success": True, "board_fen": board_fen, 'oo': True})
 
-        elif str(piece) == 'k' and chess_move.from_square == 60 and chess_move.to_square == 58 and board.has_queenside_castling_rights == True:
+        elif str(piece) == 'k' and chess_move.from_square == 60 and chess_move.to_square == 58 and board.has_queenside_castling_rights(chess.BLACK) == True:
             board.push(chess_move)
             print("trying to castle short side")
             return jsonify({"success": True, "board_fen": board_fen, 'ooo': True})
@@ -236,7 +236,10 @@ def move_piece():
                 else:
                     board.reset()
                     return jsonify({"success": True, "board_fen": board_fen, "is_checkmate": True, "black": True})
-                
+            elif board.is_stalemate() == True:
+                board.reset()
+                return jsonify({"success": True, "stalemate": True})
+            
             return jsonify({"success": True, "board_fen": board_fen, "is_checkmate" : False, "wpromotion": True})
         
         elif str(piece) == 'p' and chess.square_rank(chess_move.from_square) == 1:
@@ -250,12 +253,18 @@ def move_piece():
                 else:
                     board.reset()
                     return jsonify({"success": True, "board_fen": board_fen, "is_checkmate": True, "black": True})
+            elif board.is_stalemate() == True:
+                board.reset()
+                return jsonify({"success": True, "stalemate": True})
                 
             return jsonify({"success": True, "board_fen": board_fen, "is_checkmate" : False, "bpromotion": True})
             
         elif chess_move in board.legal_moves:
             board.push(chess_move)
 
+            if board.is_stalemate() == True:
+                board.reset()
+                return jsonify({"success": True, "stalemate": True})
             
             if board.is_checkmate() == True:
                 if board.outcome().winner == chess.WHITE:

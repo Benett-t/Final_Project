@@ -57,6 +57,7 @@
     transition: transform 0.5s ease;
     position: absolute;
     z-index: 10;
+    cursor: grab;
 }
 
 .board_container {
@@ -98,4 +99,15 @@ body {
 
 .label-black {
     color: #b58863;
+}
+
+.square.dragover {
+    background-color: rgb(255, 226, 96);
+}
+
+.drag-ghost {
+    opacity: 1; 
+    pointer-events: none; 
+    z-index: 9999; 
+    position: absolute; 
 }
