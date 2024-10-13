@@ -204,7 +204,28 @@ def move_piece():
         print(piece)
         print (chess_move.from_square)
 
-        if str(piece) == 'P' and chess.square_rank(chess_move.from_square) == 6:
+        if str(piece) == 'K' and chess_move.from_square == 4 and chess_move.to_square == 6 and board.has_kingside_castling_rights == True:
+            board.push(chess_move)
+            print("trying to castle short side")
+            return jsonify({"success": True, "board_fen": board_fen, 'OO': True})
+        
+        elif str(piece) == 'K' and chess_move.from_square == 4 and chess_move.to_square == 2 and board.has_queenside_castling_rights == True:
+            board.push(chess_move)
+            print("trying to castle short side")
+            return jsonify({"success": True, "board_fen": board_fen, 'OOO': True})
+        
+        elif str(piece) == 'k' and chess_move.from_square == 60 and chess_move.to_square == 62 and board.has_kingside_castling_rights == True:
+            board.push(chess_move)
+            print("trying to castle short side")
+            return jsonify({"success": True, "board_fen": board_fen, 'oo': True})
+
+        elif str(piece) == 'k' and chess_move.from_square == 60 and chess_move.to_square == 58 and board.has_queenside_castling_rights == True:
+            board.push(chess_move)
+            print("trying to castle short side")
+            return jsonify({"success": True, "board_fen": board_fen, 'ooo': True})
+
+
+        elif str(piece) == 'P' and chess.square_rank(chess_move.from_square) == 6:
             chess_move = chess.Move.from_uci(move + 'q')
             board.push(chess_move)
 

@@ -31,6 +31,7 @@
     grid-template-rows: repeat(8, 70px);
     gap: 0px;
     margin: 20px auto;
+    user-select: none;
 }
 
 .square {
@@ -72,4 +73,29 @@ body {
 
 .selected {
     background-color: rgb(255, 226, 96);
+}
+
+.col-label {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    font-size: 13px;
+    z-index: 100;
+    font-weight: bold;
+}
+
+.row-label {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    font-size: 13px; 
+    font-weight: bold;
+}
+
+.label-white {
+    color: #f0d9b5;
+}
+
+.label-black {
+    color: #b58863;
 }

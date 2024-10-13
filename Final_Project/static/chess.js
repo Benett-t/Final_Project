@@ -37,13 +37,43 @@ function renderBoard(fen) {
             } else {
                 square.classList.add('black');
             }
+            if (row === 7) {
+                const collabel = document.createElement('div');
+                collabel.textContent = String.fromCharCode(97 + col);
+                collabel.classList.add('row-label')
+
+                if (col % 2 == 0) {
+                    collabel.classList.add('label-white');
+                }
+
+                else {
+                    collabel.classList.add('label-black');
+                }
+
+                square.appendChild(collabel);
+            }
+
+            if (col === 0) {
+                const rowlabel = document.createElement('div');
+                rowlabel.textContent = 8 - row;
+                rowlabel.classList.add('col-label');
+
+                if (row % 2 == 0) {
+                    rowlabel.classList.add('label-black');
+                }
+
+                else {
+                    rowlabel.classList.add('label-white');
+                }
+
+                square.appendChild(rowlabel);
+            }
 
             if (isNaN(piece)) {
                 // If the character is not a number, it's a piece
                 const img = document.createElement('img');
                 img.src = `/static/images/chess/${pieceImages[piece]}.png`;
                 img.alt = piece;
-                img.draggable = false;
                 img.classList.add('piece-img');
                 square.appendChild(img);
                 col++; // Increment for pieces
@@ -61,6 +91,34 @@ function renderBoard(fen) {
                         emptySquare.classList.add("black")
                     }
                     
+                    if (row === 7) {
+                        const collabel = document.createElement('div');
+                        collabel.textContent = String.fromCharCode(97 + col);
+                        collabel.classList.add('row-label');
+                        
+                        if (col % 2 == 0) {
+                            collabel.classList.add('label-white');
+                        }
+                        else {
+                            collabel.classList.add('label-black');
+                        }
+                        emptySquare.appendChild(collabel);
+                    }
+        
+                    if (col === 0) {
+                        const rowlabel = document.createElement('div');
+                        rowlabel.textContent = 8 - row;
+                        rowlabel.classList.add('col-label');
+
+                        if (row % 2 == 0) {
+                            rowlabel.classList.add('label-black');
+                        }
+                        else {
+                            rowlabel.classList.add('label-white');
+                        }
+                        emptySquare.appendChild(rowlabel);
+                    }
+
                     emptySquare.addEventListener('click', () => handleSquareClick(emptySquare));
                     boardElement.appendChild(emptySquare); // Add empty square
                     col++; // Increment column for each empty square
@@ -111,6 +169,18 @@ function submitMove(move, square) {
         data: JSON.stringify({ move: move }),
         success: function(response) {
             updateBoard(move, response.is_checkmate, response.white, response.black, response.wpromotion, response.bpromotion);
+            if (response.OO == true) {
+                updateBoard('h1f1');
+            }
+            else if (response.OOO == true) {
+                updateBoard('a1d1');
+            }
+            else if (response.oo == true) {
+                updateBoard('h8f8');
+            }
+            else if (response.ooo == true) {
+                updateBoard('a8d8');
+            }
         },
         error: function(response) {
             square.classList.remove('selected')
@@ -151,9 +221,28 @@ function updateBoard(move, is_checkmate, white, black, wpromotion, bpromotion) {
             // Once the transition is over, move the piece to the new square
             setTimeout(() => { 
                 console.log(piece)
+                const fromrowlabel = fromElement.querySelector('.col-label')
+                const fromcollablel = fromElement.querySelector('.row-label')
+
+                const torowlabel = toElement.querySelector('.col-label')
+                const tocollablel = toElement.querySelector('.row-label')
+
                 toElement.innerHTML = `<img src="/static/images/chess/${pieceImages[piece]}.png" alt="${piece}" class="piece-img">`;
                 fromElement.innerHTML = ''; // Clear the from square
                 img.style.transform = ''; // Reset the transform
+    
+                if (fromcollablel) {
+                    fromElement.appendChild(fromcollablel);
+                } 
+                if (fromrowlabel) {
+                    fromElement.appendChild(fromrowlabel);
+                }
+                if (torowlabel) {
+                    toElement.appendChild(torowlabel);
+                }
+                if (tocollablel) {
+                    toElement.appendChild(tocollablel);
+                }
 
                 // Update the board state
                 boardState[toSquare] = piece;
