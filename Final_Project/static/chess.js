@@ -3,6 +3,12 @@ const pieceImages = {
     'R': 'w_rook', 'N': 'w_knight', 'B': 'w_bishop', 'Q': 'w_queen', 'K': 'w_king', 'P': 'w_pawn'
 };
 
+const movesound = new Audio('/static/sounds/move.wav');
+const checksound = new Audio('/static/sounds/check.wav');
+const matesound = new Audio('/static/sounds/checkmate.wav');
+const capturesound = new Audio('/static/sounds/capture.wav');
+const errorsound = new Audio('/static/sounds/invalid.wav');
+
 const boardElement = document.getElementById('chessboard');
 let selectedSquare = null;
 let selectedPiece = null;
@@ -171,7 +177,7 @@ function handleDragStart(event) {
     squares.forEach(square => {
         square.classList.remove('selected')
     });
-    
+
     isDragging = true;
     draggedPiece = event.target;
     sourceSquare = event.target.parentElement.dataset.square;
@@ -256,6 +262,7 @@ function submitMove(move, square, callback = () => {}) {
         data: JSON.stringify({ move: move }),
         success: function(response) {
             updateBoard(move, response.is_checkmate, response.white, response.black, response.wpromotion, response.bpromotion, response.stalemate);
+            updateCheckSquares(response.bcheck, response.wcheck);
             callback(true);
             if (response.OO == true) {
                 updateBoard('h1f1');
@@ -271,6 +278,8 @@ function submitMove(move, square, callback = () => {}) {
             }
         },
         error: function(response) {
+            errorsound.currentTime = 0;
+            errorsound.play();
             callback(false);
             square.classList.remove('selected')
         }
@@ -288,14 +297,46 @@ function animatePieceBackToSource() {
     }
 }
 
+function updateCheckSquares(checkb, checkw) {
+    console.log("checking if we got check");
+    console.log(checkb);
+    const squares = document.querySelectorAll('.checked');
+    squares.forEach(square => {
+        square.classList.remove('checked');
+    });
 
+    if (checkb) {
+        const blackKing = document.querySelector('img[src*="b_king.png"]');
+        if (blackKing) {
+            checksound.currentTime = 0;
+            checksound.play()
+            const bKSquare = blackKing.parentElement;
+            bKSquare.classList.add('checked');
+        }
+    }
+
+    else if (checkw) {
+        const whiteKing = document.querySelector('img[src*="w_king.png"]');
+        if (whiteKing) {
+            checksound.currentTime = 0;
+            checksound.play()
+            const wKSquare = whiteKing.parentElement;
+            wKSquare.classList.add('checked');
+        }
+    }
+}
 function updateBoard(move, is_checkmate, white, black, wpromotion, bpromotion, stalemate) {
+
+    movesound.currentTime = 0;
+    movesound.play();
+
     const fromSquare = move.slice(0, 2);
     const toSquare = move.slice(2);
     var piece = boardState[fromSquare];
     const toElement = document.querySelector(`[data-square='${toSquare}']`);
     const fromElement = document.querySelector(`[data-square='${fromSquare}']`);
 
+    
     
     if (wpromotion == true) {
         piece = 'Q'
@@ -356,13 +397,16 @@ function updateBoard(move, is_checkmate, white, black, wpromotion, bpromotion, s
 
                     if (is_checkmate == true) {
                         if (white == true) {
-                            alert("WHITE WON!");
+                            matesound.currentTime = 0;
+                            matesound.play();
                         } else if (black == true) {
-                            alert("BLACK WON!");
+                            matesound.currentTime = 0;
+                            matesound.play();
                         }
                     }
                     if (stalemate == true) {
-                        alert("STALEMATE");
+                        matesound.currentTime = 0;
+                        matesound.play();
                     }
                 }, 500);
             }
@@ -402,13 +446,16 @@ function updateBoard(move, is_checkmate, white, black, wpromotion, bpromotion, s
 
                     if (is_checkmate == true) {
                         if (white == true) {
-                            alert("WHITE WON!");
+                            matesound.currentTime = 0;
+                            matesound.play();
                         } else if (black == true) {
-                            alert("BLACK WON!");
+                            matesound.currentTime = 0;
+                            matesound.play();
                         }
                     }
                     if (stalemate == true) {
-                        alert("STALEMATE");
+                        matesound.currentTime = 0;
+                        matesound.play();
                     }
             } 
         }

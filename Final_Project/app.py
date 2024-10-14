@@ -207,21 +207,30 @@ def move_piece():
         if str(piece) == 'K' and chess_move.from_square == 4 and chess_move.to_square == 6 and board.has_kingside_castling_rights(chess.WHITE) == True:
             board.push(chess_move)
             print("trying to castle short side")
+            if board.is_check() == True:
+                return jsonify({"success": True, "checkb": True, "OO": True})
             return jsonify({"success": True, "board_fen": board_fen, 'OO': True})
         
         elif str(piece) == 'K' and chess_move.from_square == 4 and chess_move.to_square == 2 and board.has_queenside_castling_rights(chess.WHITE) == True:
             board.push(chess_move)
             print("trying to castle short side")
+            if board.is_check() == True:
+                return jsonify({"success": True, "checkb": True, "OOO": True})
+            
             return jsonify({"success": True, "board_fen": board_fen, 'OOO': True})
         
         elif str(piece) == 'k' and chess_move.from_square == 60 and chess_move.to_square == 62 and board.has_kingside_castling_rights(chess.BLACK) == True:
             board.push(chess_move)
             print("trying to castle short side")
+            if board.is_check() == True:
+                return jsonify({"success": True, "checkw": True, "oo": True})
             return jsonify({"success": True, "board_fen": board_fen, 'oo': True})
 
         elif str(piece) == 'k' and chess_move.from_square == 60 and chess_move.to_square == 58 and board.has_queenside_castling_rights(chess.BLACK) == True:
             board.push(chess_move)
             print("trying to castle short side")
+            if board.is_check() == True:
+                return jsonify({"success": True, "checkw": True, "ooo": True})
             return jsonify({"success": True, "board_fen": board_fen, 'ooo': True})
 
 
@@ -236,6 +245,9 @@ def move_piece():
                 else:
                     board.reset()
                     return jsonify({"success": True, "board_fen": board_fen, "is_checkmate": True, "black": True})
+                
+            if board.is_check() == True:
+                return jsonify({"success": True, "checkb": True, "wpromotion": True})
             elif board.is_stalemate() == True:
                 board.reset()
                 return jsonify({"success": True, "stalemate": True})
@@ -245,7 +257,15 @@ def move_piece():
         elif str(piece) == 'p' and chess.square_rank(chess_move.from_square) == 1:
             chess_move = chess.Move.from_uci(move + 'q')
             board.push(chess_move)
-
+            if board.is_checkmate() == True:
+                if board.outcome().winner == chess.WHITE:
+                    board.reset()
+                    return jsonify({"success": True, "board_fen": board_fen, "is_checkmate": True, "white": True})
+                else:
+                    board.reset()
+                    return jsonify({"success": True, "board_fen": board_fen, "is_checkmate": True, "black": True})
+            if board.is_check() == True:
+                return jsonify({"success": True, "checkw": True, "bpromotion": True})
             if board.is_checkmate() == True:
                 if board.outcome().winner == chess.WHITE:
                     board.reset()
@@ -266,13 +286,18 @@ def move_piece():
                 board.reset()
                 return jsonify({"success": True, "stalemate": True})
             
-            if board.is_checkmate() == True:
+            elif board.is_checkmate() == True:
                 if board.outcome().winner == chess.WHITE:
                     board.reset()
                     return jsonify({"success": True, "board_fen": board_fen, "is_checkmate": True, "white": True})
                 else:
                     board.reset()
                     return jsonify({"success": True, "board_fen": board_fen, "is_checkmate": True, "black": True})
+                
+            elif board.is_check() == True and board.turn == chess.WHITE:
+                return jsonify({"success": True, "wcheck": True})
+            elif board.is_check() == True and board.turn == chess.BLACK:
+                return jsonify({"success": True, "bcheck": True})
                 
 
             return jsonify({"success": True, "board_fen": board_fen, "is_checkmate" : False})
