@@ -6,7 +6,7 @@
 
 {% block main %}
 
-    {% if login == 1 %}
+    {% if session["user_id"] %}
     <h1>Hello</h1>
     {% else %}
         <div class="jumbotron">
