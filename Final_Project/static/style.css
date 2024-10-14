@@ -87,6 +87,8 @@ body {
     position: absolute; 
 }
 
+/* Style for tic tac toe */
+
 :root {
 	--cell-size: 150px;
 	--color: #81c3fd; /* for hover */
