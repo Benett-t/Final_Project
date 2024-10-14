@@ -378,16 +378,27 @@ function updateCheckSquares(checkb, checkw) {
     }
 }
 function updateBoard(move, is_checkmate, white, black, wpromotion, bpromotion, stalemate) {
+    const squares = document.querySelectorAll('.square')
+
+    squares.forEach(square => {
+        square.classList.remove('tosquare');
+        square.classList.remove('fromsquare')
+    });
 
     movesound.currentTime = 0;
     movesound.play();
 
     const fromSquare = move.slice(0, 2);
     const toSquare = move.slice(2);
+
+
     var piece = boardState[fromSquare];
     const toElement = document.querySelector(`[data-square='${toSquare}']`);
     const fromElement = document.querySelector(`[data-square='${fromSquare}']`);
 
+    // display where they moved
+    toElement.classList.add('tosquare');
+    fromElement.classList.add('fromsquare');
     
     
     if (wpromotion == true) {

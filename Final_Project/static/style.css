@@ -242,3 +242,11 @@ body {
 .winning-message.show {
 	display: flex;
 }
+
+.fromsquare {
+    background-color: rgb(255, 208, 0);
+}
+
+.tosquare {
+    background-color: rgb(255, 238, 0);
+}
