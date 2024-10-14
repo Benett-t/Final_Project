@@ -12,7 +12,12 @@
     <!-- JQuery-->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
+    {% block script %}
+    <script src="/static/tictactoe.js" defer></script>
+    {% endblock %}
+    {% block styles %}
     <link href="/static/style.css" rel="stylesheet">
+    {% endblock %}
 
     <link href="/static/controllericon.ico" rel="icon">
 
@@ -28,7 +33,7 @@
           <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarNav">
-            {% if login == 1 %}
+            {% if session["user_id"] %}
                 <ul class="navbar-nav">
                     <li class="nav-item active">
                     <a class="nav-link" href="/">Home <span class="sr-only"></span></a>

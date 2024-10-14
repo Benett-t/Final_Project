@@ -1,35 +1,27 @@
 {% extends "layout.html" %}
 
+{% block script %}
+<script src="/static/tictactoe.js" defer></script>
+{% endblock %}
 {% block title %}
     Tic Tac Toe
 {% endblock %}
 
 {% block main %}
-
-    
     <h1>Play Tic Tac Toe</h1>
-    <div class="tic">
-        <table class="tictac">
-            <tr>
-
-           
-                <td class="td"></td>
-                <td class="td"></td>
-                <td class="td"></td>
-            </tr>
-            <tr>
-                <td class="td"></td>
-                <td class="td"></td>
-                <td class="td"></td>
-            </tr>
-            <tr>
-                <td class="td"></td>
-                <td class="td"></td>
-                <td class="td"></td>
-            </tr>
-        </table>
-
-        <script src="{{ url_for('static', filename='tictactoe.js') }}">
-        </script>
-  </div>
+    <div class="board" id="board">
+           <div class="cell" data-cell></div>
+           <div class="cell" data-cell></div>
+           <div class="cell" data-cell></div>
+           <div class="cell" data-cell></div>
+           <div class="cell" data-cell></div>
+           <div class="cell" data-cell></div>
+           <div class="cell" data-cell></div>
+           <div class="cell" data-cell></div>
+           <div class="cell" data-cell></div>
+       </div>
+       <div class="winning-message" id="winningMessage">
+           <div id="winningMessageText"></div>
+           <button id="restartButton">Restart</button>
+       </div>
 {% endblock %}
