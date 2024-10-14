@@ -49,9 +49,9 @@ def index():
 
     # valahogy igy
     if session.get("user_id") is None:
-        return render_template("index.html", login=0)
+        return render_template("index.html")
     else:
-        return render_template("index.html", login=1)
+        return render_template("index.html")
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -177,14 +177,14 @@ def tictactoe():
     player = "X"
 
 
-    return render_template("tictactoe.html", login=1, player=player)
+    return render_template("tictactoe.html", player=player)
 
 @app.route("/chessboard")
 @login_required
 def chessboard():
     # get board state
     board_fen = board.fen()
-    return render_template("chess.html", board_fen=board_fen, login=1)
+    return render_template("chess.html", board_fen=board_fen)
 
 @app.route("/move_piece", methods=["POST"])
 @login_required
