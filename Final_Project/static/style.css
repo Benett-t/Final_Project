@@ -158,17 +158,13 @@ body {
 }
 
 /* for circle */
-.board.circle .cell:not(.circle):not(.x):hover {
-	background: none;
-	border: 10px solid var(--color); /* Circle border */
-	border-radius: 50%; /* To make it a circle */
+.board.circle .cell:not(.circle):not(.x):hover {	
+	background: radial-gradient(var(--color) 60%, transparent 60%);
 }
 
-/* For circle (set - empty circle) */
+/* for circle (set) */
 .cell:not(.x).circle {
-	background: none;
-	border: 10px solid var(--color-set); /* Circle border when set */
-	border-radius: 50%; /* To make it a circle */
+	background: radial-gradient(var(--color-set) 60%, transparent 60%);
 }
 
 .winning-message {
