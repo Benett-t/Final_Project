@@ -88,16 +88,14 @@ body {
 }
 
 :root {
-	--cell-size: 100px;
-
+	--cell-size: 150px;
 	--color: #81c3fd; /* for hover */
 	--color-set: #0275d8; 
 	--l: 10px;
 }
 
 .board {
-	width: 100vw;
-	height: 100vh;
+    padding-top: 50px;
 	display: grid;
 	justify-content: center;
 	align-content: center;
