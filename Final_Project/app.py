@@ -198,7 +198,7 @@ def handle_move(data):
         piece = board.piece_at(chess_move.from_square)
 
         # Prepare the base response with the move
-        response_data = {"move": move}  # Include the move in all responses
+        response_data = {"move": move}  # Include the move in all response
 
         if str(piece) == 'K' and chess_move.from_square == 4 and chess_move.to_square == 6 and board.has_kingside_castling_rights(chess.WHITE):
             board.push(chess_move)
@@ -257,10 +257,11 @@ def handle_move(data):
 
                 return
             if board.is_check():
-                response_data.update({"success": True, "checkb": True, "wpromotion": True})
+                print("in P promotion check")
+                response_data.update({"success": True, "bcheck": True, "wpromotion": True})
                 socketio.emit('update_board', response_data)
                 return
-
+            
             elif board.is_stalemate():
                 board.reset()
                 response_data.update({"success": True, "stalemate": True})
@@ -280,10 +281,11 @@ def handle_move(data):
                 board.reset()
                 emit('move_response', response_data)
                 socketio.emit('update_board', response_data)
-
                 return
+            
             if board.is_check():
-                response_data.update({"success": True, "checkw": True, "bpromotion": True})
+                print("in P promotion check")
+                response_data.update({"success": True, "wcheck": True, "bpromotion": True})
                 socketio.emit('update_board', response_data)
                 return
             elif board.is_stalemate():
@@ -300,6 +302,7 @@ def handle_move(data):
 
         elif chess_move in board.legal_moves:
             board.push(chess_move)
+
             if board.is_stalemate():
                 board.reset()
                 response_data.update({"success": True, "stalemate": True})
