@@ -91,8 +91,8 @@ body {
 
 :root {
 	--cell-size: 150px;
-	--color: #81c3fd; /* for hover */
-	--color-set: #0275d8; 
+	--color: #f0d9b5; /* for hover */
+	--color-set: #b58863; 
 	--l: 10px;
 }
 
@@ -158,13 +158,17 @@ body {
 }
 
 /* for circle */
-.board.circle .cell:not(.circle):not(.x):hover {	
-	background: radial-gradient(var(--color) 60%, transparent 60%);
+.board.circle .cell:not(.circle):not(.x):hover {
+	background: none;
+	border: 10px solid var(--color); /* Circle border */
+	border-radius: 50%; /* To make it a circle */
 }
 
-/* for circle (set) */
+/* For circle (set - empty circle) */
 .cell:not(.x).circle {
-	background: radial-gradient(var(--color-set) 60%, transparent 60%);
+	background: none;
+	border: 10px solid var(--color-set); /* Circle border when set */
+	border-radius: 50%; /* To make it a circle */
 }
 
 .winning-message {
