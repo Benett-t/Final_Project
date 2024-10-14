@@ -171,13 +171,7 @@ def logout():
 @login_required
 def tictactoe():
 
-    #Temporary simulate loged in user:
-
-    #player variable
-    player = "X"
-
-
-    return render_template("tictactoe.html", player=player)
+    return render_template("tictactoe.html")
 
 @app.route("/chessboard")
 @login_required
