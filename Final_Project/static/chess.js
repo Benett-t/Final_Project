@@ -18,6 +18,19 @@ let draggedPiece = null;
 let sourceSquare = null;
 let dragGhost = null;
 let isDragging = false;
+let actualFEN = null;
+const socket = io.connect();
+
+function mirrorFEN(fen) {
+    const ranks = fen.split(' ')[0].split('/');
+    // Reverse the order of the ranks
+    const mirroredRanks = ranks.reverse().map(rank => {
+        // Reverse the pieces within each rank
+        return rank.split('').reverse().join('');
+    });
+    return mirroredRanks.join('/');
+}
+
 
 // Render the board based on the FEN string
 function renderBoard(fen) {
@@ -25,13 +38,17 @@ function renderBoard(fen) {
     boardState = {};
 
     // Split the FEN string into ranks
-    const ranks = fen.split(' ')[0].split('/');
+    
+    actualFEN = (currentPlayer === 'black') ? mirrorFEN(fen) : fen;
+
+    const ranks = actualFEN.split(' ')[0].split('/');
 
     // Loop through each rank
     for (let row = 0; row < 8; row++) {
+        let actualRow = (currentPlayer === 'black') ? 7 - row : row
+
         let col = 0; // Reset column index for each row
         const rank = ranks[row];
-        console.log("Processing rank:", rank); // Debugging line
 
         // Loop through each character in the rank
         for (let i = 0; i < rank.length; i++) {
@@ -45,9 +62,15 @@ function renderBoard(fen) {
             } else {
                 square.classList.add('black');
             }
-            if (row === 7) {
+
+
+
+            let actualCol = (currentPlayer === 'black') ? 7 - col : col;
+
+            console.log(actualRow);
+            if (actualRow === ((currentPlayer === 'black') ?  0 : 7)) {
                 const collabel = document.createElement('div');
-                collabel.textContent = String.fromCharCode(97 + col);
+                collabel.textContent = String.fromCharCode(97 + actualCol);
                 collabel.classList.add('row-label')
 
                 if (col % 2 == 0) {
@@ -63,7 +86,7 @@ function renderBoard(fen) {
 
             if (col === 0) {
                 const rowlabel = document.createElement('div');
-                rowlabel.textContent = 8 - row;
+                rowlabel.textContent = 8 - actualRow;
                 rowlabel.classList.add('col-label');
 
                 if (row % 2 == 0) {
@@ -85,6 +108,7 @@ function renderBoard(fen) {
                 img.draggable = true;
                 img.addEventListener("dragstart", handleDragStart)
                 img.classList.add('piece-img');
+
                 square.appendChild(img);
                 col++; // Increment for pieces
             } else {
@@ -101,9 +125,9 @@ function renderBoard(fen) {
                         emptySquare.classList.add("black")
                     }
                     
-                    if (row === 7) {
+                    if (actualRow === ((currentPlayer === 'black') ? 0 : 7)) {
                         const collabel = document.createElement('div');
-                        collabel.textContent = String.fromCharCode(97 + col);
+                        collabel.textContent = String.fromCharCode(97 + actualCol);
                         collabel.classList.add('row-label');
                         
                         if (col % 2 == 0) {
@@ -117,7 +141,7 @@ function renderBoard(fen) {
         
                     if (col === 0) {
                         const rowlabel = document.createElement('div');
-                        rowlabel.textContent = 8 - row;
+                        rowlabel.textContent = 8 - actualRow;
                         rowlabel.classList.add('col-label');
 
                         if (row % 2 == 0) {
@@ -132,12 +156,14 @@ function renderBoard(fen) {
                     emptySquare.addEventListener('click', () => handleSquareClick(emptySquare));
                     boardElement.appendChild(emptySquare); // Add empty square
                     col++; // Increment column for each empty square
-                    emptySquare.dataset.square = String.fromCharCode(97 + col - 1) + (8 - row); // e.g., 'e2'
+                    const squareCol = (currentPlayer === 'black') ? 7 - (col - 1) : col - 1;
+                    emptySquare.dataset.square = String.fromCharCode(97 + squareCol) + (8 - actualRow); // e.g., 'e2'
                 }
                 continue; // Skip to the next character
             }
             
-            square.dataset.square = String.fromCharCode(96 + col) + (8 - row); // e.g., 'e2'
+            const squareCol = (currentPlayer === 'black') ? 7 - (col - 1) : col - 1;
+            square.dataset.square = String.fromCharCode(97 + squareCol) + (8 - actualRow); // e.g., 'e2'
             square.addEventListener('click', () => handleSquareClick(square));
 
             boardElement.appendChild(square);
@@ -155,6 +181,7 @@ function handleSquareClick(square) {
     const piece = square.dataset.piece;
     const img = square.querySelector('img')
 
+    
     if (selectedSquare) {
         selectedSquare.classList.remove('selected')
         const move = selectedSquare.dataset.square + squareData;
@@ -163,6 +190,13 @@ function handleSquareClick(square) {
         selectedPiece = null;
     } else {
         if (img) {
+            const piecese = img.alt;
+
+            if ((currentPlayer === "white" && piecese.toUpperCase() !== piecese) || (currentPlayer === "black" && piecese.toLowerCase() !== piecese)) {
+                errorsound.play();
+                return;
+            }
+
             selectedSquare = square;
             selectedPiece = piece;
             square.classList.add('selected')
@@ -173,6 +207,14 @@ function handleSquareClick(square) {
 
 function handleDragStart(event) {
     const squares = document.querySelectorAll('.selected')
+    const piecese = event.target.alt;
+    console.log(currentPlayer);
+
+    if ((currentPlayer === "white" && piecese.toUpperCase() !== piecese) || (currentPlayer === "black" && piecese.toLowerCase() !== piecese)) {
+        errorsound.play();
+        return;
+    }
+
 
     squares.forEach(square => {
         square.classList.remove('selected')
@@ -251,40 +293,50 @@ function handleMouseUp(event) {
     sourceSquare = null;
 }
 
+// Setting up the listener to handle incoming moves
+socket.on('update_board', function(data) {
+    if (data.success) {
+        // Update the board based on the opponent's move
+        updateBoard(data.move, data.is_checkmate, data.white, data.black, data.wpromotion, data.bpromotion, data.stalemate);
+        updateCheckSquares(data.bcheck, data.wcheck);
+
+        // Handle castling responses
+        if (data.OO) {
+            updateBoard('h1f1');
+        } else if (data.OOO) {
+            updateBoard('a1d1');
+        } else if (data.oo) {
+            updateBoard('h8f8');
+        } else if (data.ooo) {
+            updateBoard('a8d8');
+        }
+    } else {
+        console.error('Error processing move:', data.error);
+    }
+});
+
+
 
 
 // Send the move to the server
 function submitMove(move, square, callback = () => {}) {
-    $.ajax({
-        url: "/move_piece",
-        method: "POST",
-        contentType: "application/json",
-        data: JSON.stringify({ move: move }),
-        success: function(response) {
-            updateBoard(move, response.is_checkmate, response.white, response.black, response.wpromotion, response.bpromotion, response.stalemate);
-            updateCheckSquares(response.bcheck, response.wcheck);
+    // Emit the move_piece event to the server
+    socket.emit('move_piece', { move: move });
+
+    // Listen for the response from the server
+    socket.once('move_response', function(response) {
+        if (response.success) {
+            // Update the board based on the response data
             callback(true);
-            if (response.OO == true) {
-                updateBoard('h1f1');
-            }
-            else if (response.OOO == true) {
-                updateBoard('a1d1');
-            }
-            else if (response.oo == true) {
-                updateBoard('h8f8');
-            }
-            else if (response.ooo == true) {
-                updateBoard('a8d8');
-            }
-        },
-        error: function(response) {
+        } else {
             errorsound.currentTime = 0;
-            errorsound.play();
+            errorsound.play()
             callback(false);
-            square.classList.remove('selected')
+            square.classList.remove('selected');
         }
     });
 }
+
 
 
 function animatePieceBackToSource() {

@@ -11,10 +11,9 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
     <!-- JQuery-->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-    {% block script %}
-    <script src="/static/tictactoe.js" defer></script>
-    {% endblock %}
+    <!-- Socket-IO-->
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    
     {% block styles %}
     <link href="/static/style.css" rel="stylesheet">
     {% endblock %}
@@ -48,7 +47,10 @@
                     <a class="nav-link" href="/rockpaperscissors">Rock Paper Scissors</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/chessboard">Chess test</a>
+                        <a class="nav-link" href="/chessboard/white">Play with white test</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/chessboard/black">Play with black test</a>
                     </li>
                 </ul>
                 <ul class="navbar-nav ms-auto mt-2">

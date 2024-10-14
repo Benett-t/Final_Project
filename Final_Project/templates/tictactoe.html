@@ -1,8 +1,7 @@
 {% extends "layout.html" %}
 
-{% block script %}
-<script src="/static/tictactoe.js" defer></script>
-{% endblock %}
+
+
 {% block title %}
     Tic Tac Toe
 {% endblock %}
@@ -24,4 +23,6 @@
            <div id="winningMessageText"></div>
            <button id="restartButton">Restart</button>
        </div>
+
+       <script src="/static/tictactoe.js" defer></script>
 {% endblock %}
