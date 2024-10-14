@@ -67,7 +67,6 @@ function renderBoard(fen) {
 
             let actualCol = (currentPlayer === 'black') ? 7 - col : col;
 
-            console.log(actualRow);
             if (actualRow === ((currentPlayer === 'black') ?  0 : 7)) {
                 const collabel = document.createElement('div');
                 collabel.textContent = String.fromCharCode(97 + actualCol);
@@ -208,7 +207,6 @@ function handleSquareClick(square) {
 function handleDragStart(event) {
     const squares = document.querySelectorAll('.selected')
     const piecese = event.target.alt;
-    console.log(currentPlayer);
 
     if ((currentPlayer === "white" && piecese.toUpperCase() !== piecese) || (currentPlayer === "black" && piecese.toLowerCase() !== piecese)) {
         errorsound.play();
@@ -298,7 +296,7 @@ socket.on('update_board', function(data) {
     if (data.success) {
         // Update the board based on the opponent's move
         updateBoard(data.move, data.is_checkmate, data.white, data.black, data.wpromotion, data.bpromotion, data.stalemate);
-        updateCheckSquares(data.bcheck, data.wcheck);
+        updateCheckSquares(data.bcheck, data.wcheck, data.is_checkmate, data.black, data.white);
 
         // Handle castling responses
         if (data.OO) {
@@ -349,13 +347,18 @@ function animatePieceBackToSource() {
     }
 }
 
-function updateCheckSquares(checkb, checkw) {
-    console.log("checking if we got check");
-    console.log(checkb);
+function updateCheckSquares(checkb, checkw, checkmate, black, white) {
     const squares = document.querySelectorAll('.checked');
     squares.forEach(square => {
         square.classList.remove('checked');
     });
+
+    if (checkmate == true && black == true) {
+        checkw = true;
+    }
+    else if (checkmate == true && white == true) {
+        checkb = true;
+    }
 
     if (checkb) {
         const blackKing = document.querySelector('img[src*="b_king.png"]');
@@ -426,7 +429,6 @@ function updateBoard(move, is_checkmate, white, black, wpromotion, bpromotion, s
 
                 // Once the transition is over, move the piece to the new square
                 setTimeout(() => { 
-                    console.log(piece)
                     const fromrowlabel = fromElement.querySelector('.col-label')
                     const fromcollablel = fromElement.querySelector('.row-label')
 
@@ -475,7 +477,6 @@ function updateBoard(move, is_checkmate, white, black, wpromotion, bpromotion, s
             }
             else {
                     isDragging = false;
-                    console.log(piece)
                     const fromrowlabel = fromElement.querySelector('.col-label')
                     const fromcollablel = fromElement.querySelector('.row-label')
 
@@ -506,7 +507,6 @@ function updateBoard(move, is_checkmate, white, black, wpromotion, bpromotion, s
                     // Update the board state
                     boardState[toSquare] = piece;
                     delete boardState[fromSquare];
-
                     if (is_checkmate == true) {
                         if (white == true) {
                             matesound.currentTime = 0;
