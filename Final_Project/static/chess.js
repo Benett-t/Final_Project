@@ -20,6 +20,8 @@ let dragGhost = null;
 let isDragging = false;
 let actualFEN = null;
 const socket = io.connect();
+socket.emit('join', {room: roomid});
+
 
 function mirrorFEN(fen) {
     const ranks = fen.split(' ')[0].split('/');
@@ -301,12 +303,16 @@ socket.on('update_board', function(data) {
         // Handle castling responses
         if (data.OO) {
             updateBoard('h1f1');
+            updateCheckSquares(data.bcheck, data.wcheck, data.is_checkmate, data.black, data.white);
         } else if (data.OOO) {
             updateBoard('a1d1');
+            updateCheckSquares(data.bcheck, data.wcheck, data.is_checkmate, data.black, data.white);
         } else if (data.oo) {
             updateBoard('h8f8');
+            updateCheckSquares(data.bcheck, data.wcheck, data.is_checkmate, data.black, data.white);
         } else if (data.ooo) {
             updateBoard('a8d8');
+            updateCheckSquares(data.bcheck, data.wcheck, data.is_checkmate, data.black, data.white);
         }
     } else {
         console.error('Error processing move:', data.error);
@@ -319,7 +325,7 @@ socket.on('update_board', function(data) {
 // Send the move to the server
 function submitMove(move, square, callback = () => {}) {
     // Emit the move_piece event to the server
-    socket.emit('move_piece', { move: move });
+    socket.emit('move_piece', { move: move, room: roomid,});
 
     // Listen for the response from the server
     socket.once('move_response', function(response) {

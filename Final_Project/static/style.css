@@ -7,10 +7,27 @@
     gap: 0px;
     margin: 20px auto;
     user-select: none;
-    width: 30vw;
+    width: 50vw;
     max-width: 600px;
-    height: 30vw;
+    height: 50vw;
     max-height: 600px;
+}
+
+/* mobile */
+@media (max-width: 480px) {
+    #chessboard {
+        width: 90vw; /* Take more space on small screens */
+        height: 90vw;
+        max-width: none; /* Remove the max-width limitation */
+        max-height: none;
+    }
+}
+/* tablet */
+@media (min-width: 1200px) {
+    #chessboard {
+        width: 40vw; /* Slightly reduce width for large screens */
+        height: 40vw;
+    }
 }
 
 .square {
@@ -43,7 +60,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 80vh;
+    height: 70vh;
 }
 
 body {

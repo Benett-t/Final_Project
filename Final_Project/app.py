@@ -1,6 +1,6 @@
 from flask import session, Flask, render_template, request, redirect, jsonify
 from flask_session import Session
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO, emit, join_room, leave_room
 import sqlite3
 import bcrypt
 from functools import wraps
@@ -11,9 +11,10 @@ app = Flask(__name__)
 
 socketio = SocketIO(app)
 
+rooms_boards = {}
 board = chess.Board()
 # after closing website session deletes set to True if you want permament session.
-app.config["SESSION_PERMANENT"] = False
+app.config["SESSION_PERMANENT"] = True
 # Save session in filesystem insted of browser
 app.config["SESSION_TYPE"] = "filesystem"
 # Initilise session
@@ -176,23 +177,49 @@ def tictactoe():
 
     return render_template("tictactoe.html")
 
-@app.route("/chessboard/<color>")
+@app.route("/chessboard/<color>/<roomid>")
 @login_required
-def chessboard(color):
+def chessboard(color, roomid):
     # get board state
-    board_fen = board.fen()
-    return render_template("chess.html", board_fen=board_fen, currentplayer=color)
+    if roomid not in rooms_boards:
+        rooms_boards[roomid] = chess.Board()
+
+    board_fen = rooms_boards[roomid].fen()
+
+    return render_template("chess.html", board_fen=board_fen, currentplayer=color, roomid=roomid)
+
+# if we recive join
+@socketio.on('join')
+def on_join(data):
+    username = session.get("user_id")
+    room = data['room']  # room id will be passed from the client
+    join_room(room)
+    print(room)
+    socketio.emit('message', {'msg': f'{username} has entered the room {room}.'}, room=room)
+
+# if we leave
+@socketio.on('leave')
+def on_leave(data):
+    username = session.get("user_id")
+    room = data['room']  # room id will be passed from the client
+    leave_room(room)
+    socketio.emit('message', {'msg': f'{username} has left the room {room}.'}, room=room)
 
 @socketio.on('move_piece')
 @login_required
 def handle_move(data):
-    if not data or 'move' not in data:
+    if not data or 'move' not in data or 'room' not in data:
         emit('move_response', {'success': False, 'error': 'Invalid request, move data missing'})
         return
-
+    
     move = data['move']
+    room = data['room']
 
-    try:
+    if room not in rooms_boards:
+        emit('move_response', {"success": False, "error": "Room does not exist"})
+    board = rooms_boards[room]
+
+    try:    
         board_fen = board.fen()
         chess_move = chess.Move.from_uci(move)
         piece = board.piece_at(chess_move.from_square)
@@ -203,11 +230,12 @@ def handle_move(data):
         if str(piece) == 'K' and chess_move.from_square == 4 and chess_move.to_square == 6 and board.has_kingside_castling_rights(chess.WHITE):
             board.push(chess_move)
             if board.is_check():
+                print("sending OO")
                 response_data.update({"success": True, "checkb": True, "OO": True})
             else:
                 response_data.update({"success": True, "board_fen": board_fen, 'OO': True})
-            emit('move_response', response_data)
-            socketio.emit('update_board', response_data)
+            emit('move_response', response_data, room=room)
+            socketio.emit('update_board', response_data, room=room)
             return
 
         elif str(piece) == 'K' and chess_move.from_square == 4 and chess_move.to_square == 2 and board.has_queenside_castling_rights(chess.WHITE):
@@ -216,8 +244,8 @@ def handle_move(data):
                 response_data.update({"success": True, "checkb": True, "OOO": True})
             else:
                 response_data.update({"success": True, "board_fen": board_fen, 'OOO': True})
-            emit('move_response', response_data)
-            socketio.emit('update_board', response_data)
+            emit('move_response', response_data, room=room)
+            socketio.emit('update_board', response_data, room=room)
             return
 
         elif str(piece) == 'k' and chess_move.from_square == 60 and chess_move.to_square == 62 and board.has_kingside_castling_rights(chess.BLACK):
@@ -228,8 +256,8 @@ def handle_move(data):
                 response_data.update({"success": True, "board_fen": board_fen, 'oo': True})
                 
 
-            emit('move_response', response_data)
-            socketio.emit('update_board', response_data)
+            emit('move_response', response_data, room=room)
+            socketio.emit('update_board', response_data, room=room)
             return
 
 
@@ -241,8 +269,8 @@ def handle_move(data):
             else:
                 response_data.update({"success": True, "board_fen": board_fen, 'ooo': True})
 
-            emit('move_response', response_data)
-            socketio.emit('update_board', response_data)
+            emit('move_response', response_data, room=room)
+            socketio.emit('update_board', response_data, room=room)
 
 
 
@@ -252,25 +280,25 @@ def handle_move(data):
             if board.is_checkmate():
                 response_data.update({"success": True, "board_fen": board_fen, "is_checkmate": True, "white": True})
                 board.reset()
-                emit('move_response', response_data)
-                socketio.emit('update_board', response_data)
+                emit('move_response', response_data, room=room)
+                socketio.emit('update_board', response_data, room=room)
 
                 return
             if board.is_check():
                 print("in P promotion check")
                 response_data.update({"success": True, "bcheck": True, "wpromotion": True})
-                socketio.emit('update_board', response_data)
+                socketio.emit('update_board', response_data, room=room)
                 return
             
             elif board.is_stalemate():
                 board.reset()
                 response_data.update({"success": True, "stalemate": True})
-                emit('move_response', response_data)
-                socketio.emit('update_board', response_data)
+                emit('move_response', response_data, room=room)
+                socketio.emit('update_board', response_data, room=room)
                 return
             response_data.update({"success": True, "board_fen": board_fen, "is_checkmate": False, "wpromotion": True})
-            emit('move_response', response_data)
-            socketio.emit('update_board', response_data)
+            emit('move_response', response_data, room=room)
+            socketio.emit('update_board', response_data, room=room)
 
 
         elif str(piece) == 'p' and chess.square_rank(chess_move.from_square) == 1:
@@ -279,25 +307,25 @@ def handle_move(data):
             if board.is_checkmate():
                 response_data.update({"success": True, "board_fen": board_fen, "is_checkmate": True, "black": True})
                 board.reset()
-                emit('move_response', response_data)
-                socketio.emit('update_board', response_data)
+                emit('move_response', response_data, room=room)
+                socketio.emit('update_board', response_data, room=room)
                 return
             
             if board.is_check():
                 print("in P promotion check")
                 response_data.update({"success": True, "wcheck": True, "bpromotion": True})
-                socketio.emit('update_board', response_data)
+                socketio.emit('update_board', response_data, room=room)
                 return
             elif board.is_stalemate():
                 board.reset()
                 response_data.update({"success": True, "stalemate": True})
-                emit('move_response', response_data)
-                socketio.emit('update_board', response_data)
+                emit('move_response', response_data, room=room)
+                socketio.emit('update_board', response_data, room=room)
 
                 return
             response_data.update({"success": True, "board_fen": board_fen, "is_checkmate": False, "bpromotion": True})
-            emit('move_response', response_data)
-            socketio.emit('update_board', response_data)
+            emit('move_response', response_data, room=room)
+            socketio.emit('update_board', response_data, room=room)
 
 
         elif chess_move in board.legal_moves:
@@ -306,8 +334,8 @@ def handle_move(data):
             if board.is_stalemate():
                 board.reset()
                 response_data.update({"success": True, "stalemate": True})
-                emit('move_response', response_data)
-                socketio.emit('update_board', response_data)
+                emit('move_response', response_data, room=room)
+                socketio.emit('update_board', response_data, room=room)
                 return
 
             elif board.is_checkmate():
@@ -318,25 +346,25 @@ def handle_move(data):
                     response_data.update({"success": True, "board_fen": board_fen, "is_checkmate": True, "black": True})
 
                 board.reset()
-                emit('move_response', response_data)
-                socketio.emit('update_board', response_data)
+                emit('move_response', response_data, room=room)
+                socketio.emit('update_board', response_data, room=room)
                 return
 
             elif board.is_check() and board.turn == chess.WHITE:
                 response_data.update({"success": True, "wcheck": True})
-                socketio.emit('update_board', response_data)
+                socketio.emit('update_board', response_data, room=room)
 
             elif board.is_check() and board.turn == chess.BLACK:
                 response_data.update({"success": True, "bcheck": True})
-                socketio.emit('update_board', response_data)
+                socketio.emit('update_board', response_data, room=room)
 
 
             response_data.update({"success": True, "board_fen": board_fen, "is_checkmate": False})
 
-            socketio.emit('update_board', response_data)
+            socketio.emit('update_board', response_data, room=room)
 
-            emit('move_response', response_data)
+            emit('move_response', response_data, room=room)
         else:
-            emit('move_response', {"success": False, "error": "Invalid move"})
+            emit('move_response', {"success": False, "error": "Invalid move"}, room=room)
     except Exception as e:
-        emit('move_response', {"success": False, "error": str(e)})
+        emit('move_response', {"success": False, "error": str(e)}, room=room)
