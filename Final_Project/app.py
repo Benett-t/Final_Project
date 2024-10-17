@@ -1,4 +1,4 @@
-from flask import session, Flask, render_template, request, redirect, jsonify
+from flask import session, Flask, render_template, request, redirect, url_for
 from flask_session import Session
 from flask_socketio import SocketIO, emit, join_room, leave_room
 import sqlite3
@@ -368,3 +368,16 @@ def handle_move(data):
             emit('move_response', {"success": False, "error": "Invalid move"}, room=room)
     except Exception as e:
         emit('move_response', {"success": False, "error": str(e)}, room=room)
+
+@app.route("/chess", methods=["POST", "GET"])
+@login_required
+def croom():
+    if request.method == "GET":
+        return render_template("searchchess.html")
+    else:
+        room = request.form.get('room')
+        color = request.form.get('color')
+        if room and color:
+            return redirect(url_for('chessboard', color=color, roomid=room))
+        else:
+            return render_template("searchchess.html")
