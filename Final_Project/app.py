@@ -12,6 +12,7 @@ app = Flask(__name__)
 socketio = SocketIO(app)
 
 rooms_boards = {}
+room_colors = {}
 board = chess.Board()
 # after closing website session deletes set to True if you want permament session.
 app.config["SESSION_PERMANENT"] = True
@@ -177,16 +178,42 @@ def tictactoe():
 
     return render_template("tictactoe.html")
 
-@app.route("/chessboard/<color>/<roomid>")
+@app.route("/chessboard/<roomid>")
 @login_required
-def chessboard(color, roomid):
-    # get board state
+def chessboard(roomid):
+    user_id = session.get("user_id")
+
     if roomid not in rooms_boards:
         rooms_boards[roomid] = chess.Board()
 
     board_fen = rooms_boards[roomid].fen()
 
-    return render_template("chess.html", board_fen=board_fen, currentplayer=color, roomid=roomid)
+    if roomid not in room_colors:
+        room_colors[roomid] = {'white': None, 'black': None}
+    
+    color = room_colors[roomid]
+    print(color['white'], color['black'], user_id)
+    
+    if color['white'] == user_id:
+        currentplayer = 'white'
+        return render_template("chess.html", board_fen=board_fen, currentplayer=currentplayer, roomid=roomid)
+    
+    elif color['black'] == user_id:
+        currentplayer = 'black'
+        return render_template("chess.html", board_fen=board_fen, currentplayer=currentplayer, roomid=roomid)
+    
+    elif color['white'] is None:
+        color['white'] = user_id
+        currentplayer = 'white'
+        return render_template("chess.html", board_fen=board_fen, currentplayer=currentplayer, roomid=roomid)
+    
+    elif color['black'] is None:
+        color['black'] = user_id
+        currentplayer = 'black'
+        return render_template("chess.html", board_fen=board_fen, currentplayer=currentplayer, roomid=roomid)
+    else:
+        return "Room full", 403 # Prevent more than 2 players
+
 
 # if we recive join
 @socketio.on('join')
@@ -378,6 +405,19 @@ def croom():
         room = request.form.get('room')
         color = request.form.get('color')
         if room and color:
-            return redirect(url_for('chessboard', color=color, roomid=room))
+            user_id = session.get("user_id")
+
+            if room not in room_colors:
+                room_colors[room] = {'white': None, 'black': None}
+            print(room_colors[room])
+            r = room_colors[room]
+            if r[color] is not None:
+                return redirect(url_for('chessboard', roomid=room))
+            
+            r[color] = user_id
+
+            return redirect(url_for('chessboard', roomid=room))
+        elif room:
+            return redirect(url_for('chessboard', roomid=room))
         else:
             return render_template("searchchess.html")
