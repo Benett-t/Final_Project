@@ -193,7 +193,7 @@ def chessboard(roomid):
     
     color = room_colors[roomid]
     print(color['white'], color['black'], user_id)
-    
+
     if color['white'] == user_id:
         currentplayer = 'white'
         return render_template("chess.html", board_fen=board_fen, currentplayer=currentplayer, roomid=roomid)
@@ -402,7 +402,7 @@ def croom():
     if request.method == "GET":
         return render_template("searchchess.html")
     else:
-        room = request.form.get('room')
+        room = uuid4()
         color = request.form.get('color')
         if room and color:
             user_id = session.get("user_id")
