@@ -267,3 +267,9 @@ body {
 .tosquare {
     background-color: rgb(255, 238, 0);
 }
+
+@media (max-width: 992px) {
+    .navbar-collapse .nav-item {
+      padding-left: 20px; /* Add desired indentation */
+    }
+  }

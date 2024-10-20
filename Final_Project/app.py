@@ -6,6 +6,7 @@ import bcrypt
 from functools import wraps
 import chess
 from uuid import uuid5, uuid4
+from collections import defaultdict
 
 app = Flask(__name__)
 
@@ -14,6 +15,12 @@ socketio = SocketIO(app)
 rooms_boards = {}
 room_colors = {}
 board = chess.Board()
+
+games = defaultdict(lambda: {
+    'players': [],
+    'current_turn': None,
+    'board': [None] * 9
+    })
 # after closing website session deletes set to True if you want permament session.
 app.config["SESSION_PERMANENT"] = True
 # Save session in filesystem insted of browser
@@ -175,8 +182,58 @@ def logout():
 @app.route("/tictactoe")
 @login_required
 def tictactoe():
-
     return render_template("tictactoe.html")
+
+@socketio.on('join_game')
+def on_join(data):
+    room = data['room']
+    player_id = session['user_id']  # Assuming you're using Flask-Login to handle user sessions
+    game = games[room]
+
+    if len(game['players']) < 2:
+        game['players'].append(player_id)
+        if game['current_turn'] is None:
+            game['current_turn'] = player_id  # Set the first player as the one to start
+        join_room(room)
+        emit('message', f'Player {player_id} has joined room {room}', to=room)
+    else:
+        emit('message', 'Room is full', to=player_id)  # Prevent more than 2 players
+
+@socketio.on('cell_click')
+def handle_cell_click(data):
+    room = data['room']
+    cell_index = data['cell']
+    current_class = data['currentClass']
+    player_id = session['user_id']  # Get the current player's ID
+
+    game = games[room]
+    
+    # Ensure the move is from the current player
+    if player_id == game['current_turn'] and game['board'][cell_index] is None:
+        # Update the board state
+        game['board'][cell_index] = current_class
+        
+        # Swap turns
+        next_player = game['players'][1] if game['current_turn'] == game['players'][0] else game['players'][0]
+        game['current_turn'] = next_player
+        
+        # Broadcast the move to the room
+        emit('update_board', {'cell': cell_index, 'currentClass': current_class}, to=room)
+    else:
+        emit('message', 'Not your turn or invalid move!', to=player_id)
+
+@socketio.on('restart_game')
+def restart_game(data):
+    room = data['room']
+    game = games[room]
+    game['board'] = [None] * 9  # Reset the board
+    game['current_turn'] = game['players'][0]  # Set turn to the first player
+    emit('reset_board', to=room)
+
+if __name__ == '__main__':
+    socketio.run(app, host='0.0.0.0', port=5000)
+
+
 
 @app.route("/chessboard/<roomid>")
 @login_required
