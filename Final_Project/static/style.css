@@ -90,7 +90,7 @@ body {
 /* Style for tic tac toe */
 
 :root {
-	--cell-size: 150px;
+	--cell-size: 200px;
 	--color: #f0d9b5; /* for hover */
 	--color-set: #b58863; 
 	--l: 10px;
