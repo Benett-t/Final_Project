@@ -3,6 +3,12 @@ const pieceImages = {
     'R': 'w_rook', 'N': 'w_knight', 'B': 'w_bishop', 'Q': 'w_queen', 'K': 'w_king', 'P': 'w_pawn'
 };
 
+const movesound = new Audio('/static/sounds/move.wav');
+const checksound = new Audio('/static/sounds/check.wav');
+const matesound = new Audio('/static/sounds/checkmate.wav');
+const capturesound = new Audio('/static/sounds/capture.wav');
+const errorsound = new Audio('/static/sounds/invalid.wav');
+
 const boardElement = document.getElementById('chessboard');
 let selectedSquare = null;
 let selectedPiece = null;
@@ -12,6 +18,21 @@ let draggedPiece = null;
 let sourceSquare = null;
 let dragGhost = null;
 let isDragging = false;
+let actualFEN = null;
+const socket = io.connect();
+socket.emit('join', {room: roomid});
+
+
+function mirrorFEN(fen) {
+    const ranks = fen.split(' ')[0].split('/');
+    // Reverse the order of the ranks
+    const mirroredRanks = ranks.reverse().map(rank => {
+        // Reverse the pieces within each rank
+        return rank.split('').reverse().join('');
+    });
+    return mirroredRanks.join('/');
+}
+
 
 // Render the board based on the FEN string
 function renderBoard(fen) {
@@ -19,13 +40,17 @@ function renderBoard(fen) {
     boardState = {};
 
     // Split the FEN string into ranks
-    const ranks = fen.split(' ')[0].split('/');
+    
+    actualFEN = (currentPlayer === 'black') ? mirrorFEN(fen) : fen;
+
+    const ranks = actualFEN.split(' ')[0].split('/');
 
     // Loop through each rank
     for (let row = 0; row < 8; row++) {
+        let actualRow = (currentPlayer === 'black') ? 7 - row : row
+
         let col = 0; // Reset column index for each row
         const rank = ranks[row];
-        console.log("Processing rank:", rank); // Debugging line
 
         // Loop through each character in the rank
         for (let i = 0; i < rank.length; i++) {
@@ -39,9 +64,14 @@ function renderBoard(fen) {
             } else {
                 square.classList.add('black');
             }
-            if (row === 7) {
+
+
+
+            let actualCol = (currentPlayer === 'black') ? 7 - col : col;
+
+            if (actualRow === ((currentPlayer === 'black') ?  0 : 7)) {
                 const collabel = document.createElement('div');
-                collabel.textContent = String.fromCharCode(97 + col);
+                collabel.textContent = String.fromCharCode(97 + actualCol);
                 collabel.classList.add('row-label')
 
                 if (col % 2 == 0) {
@@ -57,7 +87,7 @@ function renderBoard(fen) {
 
             if (col === 0) {
                 const rowlabel = document.createElement('div');
-                rowlabel.textContent = 8 - row;
+                rowlabel.textContent = 8 - actualRow;
                 rowlabel.classList.add('col-label');
 
                 if (row % 2 == 0) {
@@ -79,6 +109,7 @@ function renderBoard(fen) {
                 img.draggable = true;
                 img.addEventListener("dragstart", handleDragStart)
                 img.classList.add('piece-img');
+
                 square.appendChild(img);
                 col++; // Increment for pieces
             } else {
@@ -95,9 +126,9 @@ function renderBoard(fen) {
                         emptySquare.classList.add("black")
                     }
                     
-                    if (row === 7) {
+                    if (actualRow === ((currentPlayer === 'black') ? 0 : 7)) {
                         const collabel = document.createElement('div');
-                        collabel.textContent = String.fromCharCode(97 + col);
+                        collabel.textContent = String.fromCharCode(97 + actualCol);
                         collabel.classList.add('row-label');
                         
                         if (col % 2 == 0) {
@@ -111,7 +142,7 @@ function renderBoard(fen) {
         
                     if (col === 0) {
                         const rowlabel = document.createElement('div');
-                        rowlabel.textContent = 8 - row;
+                        rowlabel.textContent = 8 - actualRow;
                         rowlabel.classList.add('col-label');
 
                         if (row % 2 == 0) {
@@ -126,12 +157,14 @@ function renderBoard(fen) {
                     emptySquare.addEventListener('click', () => handleSquareClick(emptySquare));
                     boardElement.appendChild(emptySquare); // Add empty square
                     col++; // Increment column for each empty square
-                    emptySquare.dataset.square = String.fromCharCode(97 + col - 1) + (8 - row); // e.g., 'e2'
+                    const squareCol = (currentPlayer === 'black') ? 7 - (col - 1) : col - 1;
+                    emptySquare.dataset.square = String.fromCharCode(97 + squareCol) + (8 - actualRow); // e.g., 'e2'
                 }
                 continue; // Skip to the next character
             }
             
-            square.dataset.square = String.fromCharCode(96 + col) + (8 - row); // e.g., 'e2'
+            const squareCol = (currentPlayer === 'black') ? 7 - (col - 1) : col - 1;
+            square.dataset.square = String.fromCharCode(97 + squareCol) + (8 - actualRow); // e.g., 'e2'
             square.addEventListener('click', () => handleSquareClick(square));
 
             boardElement.appendChild(square);
@@ -149,6 +182,7 @@ function handleSquareClick(square) {
     const piece = square.dataset.piece;
     const img = square.querySelector('img')
 
+    
     if (selectedSquare) {
         selectedSquare.classList.remove('selected')
         const move = selectedSquare.dataset.square + squareData;
@@ -157,6 +191,13 @@ function handleSquareClick(square) {
         selectedPiece = null;
     } else {
         if (img) {
+            const piecese = img.alt;
+
+            if ((currentPlayer === "white" && piecese.toUpperCase() !== piecese) || (currentPlayer === "black" && piecese.toLowerCase() !== piecese)) {
+                errorsound.play();
+                return;
+            }
+
             selectedSquare = square;
             selectedPiece = piece;
             square.classList.add('selected')
@@ -167,11 +208,18 @@ function handleSquareClick(square) {
 
 function handleDragStart(event) {
     const squares = document.querySelectorAll('.selected')
+    const piecese = event.target.alt;
+
+    if ((currentPlayer === "white" && piecese.toUpperCase() !== piecese) || (currentPlayer === "black" && piecese.toLowerCase() !== piecese)) {
+        errorsound.play();
+        return;
+    }
+
 
     squares.forEach(square => {
         square.classList.remove('selected')
     });
-    
+
     isDragging = true;
     draggedPiece = event.target;
     sourceSquare = event.target.parentElement.dataset.square;
@@ -245,37 +293,54 @@ function handleMouseUp(event) {
     sourceSquare = null;
 }
 
+// Setting up the listener to handle incoming moves
+socket.on('update_board', function(data) {
+    if (data.success) {
+        // Update the board based on the opponent's move
+        updateBoard(data.move, data.is_checkmate, data.white, data.black, data.wpromotion, data.bpromotion, data.stalemate);
+        updateCheckSquares(data.bcheck, data.wcheck, data.is_checkmate, data.black, data.white);
+
+        // Handle castling responses
+        if (data.OO) {
+            updateBoard('h1f1');
+            updateCheckSquares(data.bcheck, data.wcheck, data.is_checkmate, data.black, data.white);
+        } else if (data.OOO) {
+            updateBoard('a1d1');
+            updateCheckSquares(data.bcheck, data.wcheck, data.is_checkmate, data.black, data.white);
+        } else if (data.oo) {
+            updateBoard('h8f8');
+            updateCheckSquares(data.bcheck, data.wcheck, data.is_checkmate, data.black, data.white);
+        } else if (data.ooo) {
+            updateBoard('a8d8');
+            updateCheckSquares(data.bcheck, data.wcheck, data.is_checkmate, data.black, data.white);
+        }
+    } else {
+        console.error('Error processing move:', data.error);
+    }
+});
+
+
 
 
 // Send the move to the server
 function submitMove(move, square, callback = () => {}) {
-    $.ajax({
-        url: "/move_piece",
-        method: "POST",
-        contentType: "application/json",
-        data: JSON.stringify({ move: move }),
-        success: function(response) {
-            updateBoard(move, response.is_checkmate, response.white, response.black, response.wpromotion, response.bpromotion, response.stalemate);
+    // Emit the move_piece event to the server
+    socket.emit('move_piece', { move: move, room: roomid,});
+
+    // Listen for the response from the server
+    socket.once('move_response', function(response) {
+        if (response.success) {
+            // Update the board based on the response data
             callback(true);
-            if (response.OO == true) {
-                updateBoard('h1f1');
-            }
-            else if (response.OOO == true) {
-                updateBoard('a1d1');
-            }
-            else if (response.oo == true) {
-                updateBoard('h8f8');
-            }
-            else if (response.ooo == true) {
-                updateBoard('a8d8');
-            }
-        },
-        error: function(response) {
+        } else {
+            errorsound.currentTime = 0;
+            errorsound.play()
             callback(false);
-            square.classList.remove('selected')
+            square.classList.remove('selected');
         }
     });
 }
+
 
 
 function animatePieceBackToSource() {
@@ -288,14 +353,62 @@ function animatePieceBackToSource() {
     }
 }
 
+function updateCheckSquares(checkb, checkw, checkmate, black, white) {
+    const squares = document.querySelectorAll('.checked');
+    squares.forEach(square => {
+        square.classList.remove('checked');
+    });
 
+    if (checkmate == true && black == true) {
+        checkw = true;
+    }
+    else if (checkmate == true && white == true) {
+        checkb = true;
+    }
+
+    if (checkb) {
+        const blackKing = document.querySelector('img[src*="b_king.png"]');
+        if (blackKing) {
+            checksound.currentTime = 0;
+            checksound.play()
+            const bKSquare = blackKing.parentElement;
+            bKSquare.classList.add('checked');
+        }
+    }
+
+    else if (checkw) {
+        const whiteKing = document.querySelector('img[src*="w_king.png"]');
+        if (whiteKing) {
+            checksound.currentTime = 0;
+            checksound.play()
+            const wKSquare = whiteKing.parentElement;
+            wKSquare.classList.add('checked');
+        }
+    }
+}
 function updateBoard(move, is_checkmate, white, black, wpromotion, bpromotion, stalemate) {
+    const squares = document.querySelectorAll('.square')
+
+    squares.forEach(square => {
+        square.classList.remove('tosquare');
+        square.classList.remove('fromsquare')
+    });
+
+    movesound.currentTime = 0;
+    movesound.play();
+
     const fromSquare = move.slice(0, 2);
     const toSquare = move.slice(2);
+
+
     var piece = boardState[fromSquare];
     const toElement = document.querySelector(`[data-square='${toSquare}']`);
     const fromElement = document.querySelector(`[data-square='${fromSquare}']`);
 
+    // display where they moved
+    toElement.classList.add('tosquare');
+    fromElement.classList.add('fromsquare');
+    
     
     if (wpromotion == true) {
         piece = 'Q'
@@ -322,7 +435,6 @@ function updateBoard(move, is_checkmate, white, black, wpromotion, bpromotion, s
 
                 // Once the transition is over, move the piece to the new square
                 setTimeout(() => { 
-                    console.log(piece)
                     const fromrowlabel = fromElement.querySelector('.col-label')
                     const fromcollablel = fromElement.querySelector('.row-label')
 
@@ -356,19 +468,21 @@ function updateBoard(move, is_checkmate, white, black, wpromotion, bpromotion, s
 
                     if (is_checkmate == true) {
                         if (white == true) {
-                            alert("WHITE WON!");
+                            matesound.currentTime = 0;
+                            matesound.play();
                         } else if (black == true) {
-                            alert("BLACK WON!");
+                            matesound.currentTime = 0;
+                            matesound.play();
                         }
                     }
                     if (stalemate == true) {
-                        alert("STALEMATE");
+                        matesound.currentTime = 0;
+                        matesound.play();
                     }
                 }, 500);
             }
             else {
                     isDragging = false;
-                    console.log(piece)
                     const fromrowlabel = fromElement.querySelector('.col-label')
                     const fromcollablel = fromElement.querySelector('.row-label')
 
@@ -399,16 +513,18 @@ function updateBoard(move, is_checkmate, white, black, wpromotion, bpromotion, s
                     // Update the board state
                     boardState[toSquare] = piece;
                     delete boardState[fromSquare];
-
                     if (is_checkmate == true) {
                         if (white == true) {
-                            alert("WHITE WON!");
+                            matesound.currentTime = 0;
+                            matesound.play();
                         } else if (black == true) {
-                            alert("BLACK WON!");
+                            matesound.currentTime = 0;
+                            matesound.play();
                         }
                     }
                     if (stalemate == true) {
-                        alert("STALEMATE");
+                        matesound.currentTime = 0;
+                        matesound.play();
                     }
             } 
         }

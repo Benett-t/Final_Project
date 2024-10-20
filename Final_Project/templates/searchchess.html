@@ -1,0 +1,21 @@
+{% extends "layout.html" %}
+
+{% block title %}
+Chess
+{% endblock %}
+
+{% block main %}
+    <form method="POST" action="/chess">
+    <div class="form-group">
+      <label for="color">Choose Side</label>
+      <select class="form-control" id="color" name="color" required>
+        <option value="" disabled selected>color</option>
+        <option value="">Random</option>
+        <option value="white">White</option>
+        <option value="black">Black</option>
+      </select>
+    </div>
+    
+    <button type="submit" class="btn btn-primary mt-3">Start Game</button>
+  </form>
+{% endblock %}

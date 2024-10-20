@@ -4,13 +4,46 @@
 
 
 {% block main %}
-<h2>Chess</h2>
-<h2 id="win"></h2>
 <div class="board_container">
     <div id="chessboard" class="mx-auto"></div>
+</div>
+
+<button type="button" class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#roomLinkModal">
+    Get Room Link
+</button>
+
+    <div class="modal fade" id="roomLinkModal" tabindex="-1" aria-labelledby="roomLinkModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="roomLinkModalLabel">Room Link</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <p>Share this link with your opponent:</p>
+              <div class="input-group">
+                <input type="text" class="form-control" id="roomLink" value="{{ url_for('chessboard', roomid=roomid, _external=True) }}" readonly>
+                <button class="btn btn-outline-secondary" type="button" id="copyLinkBtn">Copy</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
     <script>
         var boardFen = "{{ board_fen }}";
+        var currentPlayer = "{{ currentplayer }}";
+        var roomid = "{{ roomid }}";
+
+        // JavaScript to copy the room link to clipboard
+        document.getElementById('copyLinkBtn').addEventListener('click', function() {
+            var roomLink = document.getElementById('roomLink');
+            roomLink.select();
+            roomLink.setSelectionRange(0, 99999);  // For mobile devices
+            document.execCommand('copy');
+        });
     </script>
+
     <script src="/static/chess.js"></script>
-</div>
 {% endblock %}

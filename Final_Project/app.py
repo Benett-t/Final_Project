@@ -1,5 +1,6 @@
-from flask import session, Flask, render_template, request, redirect, jsonify
+from flask import session, Flask, render_template, request, redirect, url_for
 from flask_session import Session
+from flask_socketio import SocketIO, emit, join_room, leave_room
 import sqlite3
 import bcrypt
 from functools import wraps
@@ -8,9 +9,13 @@ from uuid import uuid5, uuid4
 
 app = Flask(__name__)
 
+socketio = SocketIO(app)
+
+rooms_boards = {}
+room_colors = {}
 board = chess.Board()
 # after closing website session deletes set to True if you want permament session.
-app.config["SESSION_PERMANENT"] = False
+app.config["SESSION_PERMANENT"] = True
 # Save session in filesystem insted of browser
 app.config["SESSION_TYPE"] = "filesystem"
 # Initilise session
@@ -173,104 +178,246 @@ def tictactoe():
 
     return render_template("tictactoe.html")
 
-@app.route("/chessboard")
+@app.route("/chessboard/<roomid>")
 @login_required
-def chessboard():
-    # get board state
-    board_fen = board.fen()
-    return render_template("chess.html", board_fen=board_fen)
+def chessboard(roomid):
+    user_id = session.get("user_id")
 
-@app.route("/move_piece", methods=["POST"])
+    if roomid not in rooms_boards:
+        rooms_boards[roomid] = chess.Board()
+
+    board_fen = rooms_boards[roomid].fen()
+
+    if roomid not in room_colors:
+        room_colors[roomid] = {'white': None, 'black': None}
+    
+    color = room_colors[roomid]
+    print(color['white'], color['black'], user_id)
+
+    if color['white'] == user_id:
+        currentplayer = 'white'
+        return render_template("chess.html", board_fen=board_fen, currentplayer=currentplayer, roomid=roomid)
+    
+    elif color['black'] == user_id:
+        currentplayer = 'black'
+        return render_template("chess.html", board_fen=board_fen, currentplayer=currentplayer, roomid=roomid)
+    
+    elif color['white'] is None:
+        color['white'] = user_id
+        currentplayer = 'white'
+        return render_template("chess.html", board_fen=board_fen, currentplayer=currentplayer, roomid=roomid)
+    
+    elif color['black'] is None:
+        color['black'] = user_id
+        currentplayer = 'black'
+        return render_template("chess.html", board_fen=board_fen, currentplayer=currentplayer, roomid=roomid)
+    else:
+        return "Room full", 403 # Prevent more than 2 players
+
+
+# if we recive join
+@socketio.on('join')
+def on_join(data):
+    username = session.get("user_id")
+    room = data['room']  # room id will be passed from the client
+    join_room(room)
+    print(room)
+    socketio.emit('message', {'msg': f'{username} has entered the room {room}.'}, room=room)
+
+# if we leave
+@socketio.on('leave')
+def on_leave(data):
+    username = session.get("user_id")
+    room = data['room']  # room id will be passed from the client
+    leave_room(room)
+    socketio.emit('message', {'msg': f'{username} has left the room {room}.'}, room=room)
+
+@socketio.on('move_piece')
 @login_required
-def move_piece():
-    data = request.get_json()
-
-    if not data or 'move' not in data:
-        return jsonify({'error': 'Invalid request, move data missing'}), 400
+def handle_move(data):
+    if not data or 'move' not in data or 'room' not in data:
+        emit('move_response', {'success': False, 'error': 'Invalid request, move data missing'})
+        return
     
     move = data['move']
+    room = data['room']
 
-    
-    try:
+    if room not in rooms_boards:
+        emit('move_response', {"success": False, "error": "Room does not exist"})
+    board = rooms_boards[room]
+
+    try:    
         board_fen = board.fen()
         chess_move = chess.Move.from_uci(move)
         piece = board.piece_at(chess_move.from_square)
-        print(piece)
-        print (chess_move.from_square)
 
-        if str(piece) == 'K' and chess_move.from_square == 4 and chess_move.to_square == 6 and board.has_kingside_castling_rights(chess.WHITE) == True:
-            board.push(chess_move)
-            print("trying to castle short side")
-            return jsonify({"success": True, "board_fen": board_fen, 'OO': True})
-        
-        elif str(piece) == 'K' and chess_move.from_square == 4 and chess_move.to_square == 2 and board.has_queenside_castling_rights(chess.WHITE) == True:
-            board.push(chess_move)
-            print("trying to castle short side")
-            return jsonify({"success": True, "board_fen": board_fen, 'OOO': True})
-        
-        elif str(piece) == 'k' and chess_move.from_square == 60 and chess_move.to_square == 62 and board.has_kingside_castling_rights(chess.BLACK) == True:
-            board.push(chess_move)
-            print("trying to castle short side")
-            return jsonify({"success": True, "board_fen": board_fen, 'oo': True})
+        # Prepare the base response with the move
+        response_data = {"move": move}  # Include the move in all response
 
-        elif str(piece) == 'k' and chess_move.from_square == 60 and chess_move.to_square == 58 and board.has_queenside_castling_rights(chess.BLACK) == True:
+        if str(piece) == 'K' and chess_move.from_square == 4 and chess_move.to_square == 6 and board.has_kingside_castling_rights(chess.WHITE):
             board.push(chess_move)
-            print("trying to castle short side")
-            return jsonify({"success": True, "board_fen": board_fen, 'ooo': True})
+            if board.is_check():
+                print("sending OO")
+                response_data.update({"success": True, "checkb": True, "OO": True})
+            else:
+                response_data.update({"success": True, "board_fen": board_fen, 'OO': True})
+            emit('move_response', response_data, room=room)
+            socketio.emit('update_board', response_data, room=room)
+            return
+
+        elif str(piece) == 'K' and chess_move.from_square == 4 and chess_move.to_square == 2 and board.has_queenside_castling_rights(chess.WHITE):
+            board.push(chess_move)
+            if board.is_check():
+                response_data.update({"success": True, "checkb": True, "OOO": True})
+            else:
+                response_data.update({"success": True, "board_fen": board_fen, 'OOO': True})
+            emit('move_response', response_data, room=room)
+            socketio.emit('update_board', response_data, room=room)
+            return
+
+        elif str(piece) == 'k' and chess_move.from_square == 60 and chess_move.to_square == 62 and board.has_kingside_castling_rights(chess.BLACK):
+            board.push(chess_move)
+            if board.is_check():
+                response_data.update({"success": True, "checkw": True, "oo": True})
+            else:
+                response_data.update({"success": True, "board_fen": board_fen, 'oo': True})
+                
+
+            emit('move_response', response_data, room=room)
+            socketio.emit('update_board', response_data, room=room)
+            return
+
+
+        elif str(piece) == 'k' and chess_move.from_square == 60 and chess_move.to_square == 58 and board.has_queenside_castling_rights(chess.BLACK):
+            board.push(chess_move)
+            if board.is_check():
+                response_data.update({"success": True, "checkw": True, "ooo": True})
+
+            else:
+                response_data.update({"success": True, "board_fen": board_fen, 'ooo': True})
+
+            emit('move_response', response_data, room=room)
+            socketio.emit('update_board', response_data, room=room)
+
 
 
         elif str(piece) == 'P' and chess.square_rank(chess_move.from_square) == 6:
             chess_move = chess.Move.from_uci(move + 'q')
             board.push(chess_move)
-
-            if board.is_checkmate() == True:
-                if board.outcome().winner == chess.WHITE:
-                    board.reset()
-                    return jsonify({"success": True, "board_fen": board_fen, "is_checkmate": True, "white": True})
-                else:
-                    board.reset()
-                    return jsonify({"success": True, "board_fen": board_fen, "is_checkmate": True, "black": True})
-            elif board.is_stalemate() == True:
+            if board.is_checkmate():
+                response_data.update({"success": True, "board_fen": board_fen, "is_checkmate": True, "white": True})
                 board.reset()
-                return jsonify({"success": True, "stalemate": True})
+                emit('move_response', response_data, room=room)
+                socketio.emit('update_board', response_data, room=room)
+
+                return
+            if board.is_check():
+                print("in P promotion check")
+                response_data.update({"success": True, "bcheck": True, "wpromotion": True})
+                socketio.emit('update_board', response_data, room=room)
+                return
             
-            return jsonify({"success": True, "board_fen": board_fen, "is_checkmate" : False, "wpromotion": True})
-        
+            elif board.is_stalemate():
+                board.reset()
+                response_data.update({"success": True, "stalemate": True})
+                emit('move_response', response_data, room=room)
+                socketio.emit('update_board', response_data, room=room)
+                return
+            response_data.update({"success": True, "board_fen": board_fen, "is_checkmate": False, "wpromotion": True})
+            emit('move_response', response_data, room=room)
+            socketio.emit('update_board', response_data, room=room)
+
+
         elif str(piece) == 'p' and chess.square_rank(chess_move.from_square) == 1:
             chess_move = chess.Move.from_uci(move + 'q')
             board.push(chess_move)
-
-            if board.is_checkmate() == True:
-                if board.outcome().winner == chess.WHITE:
-                    board.reset()
-                    return jsonify({"success": True, "board_fen": board_fen, "is_checkmate": True, "white": True})
-                else:
-                    board.reset()
-                    return jsonify({"success": True, "board_fen": board_fen, "is_checkmate": True, "black": True})
-            elif board.is_stalemate() == True:
+            if board.is_checkmate():
+                response_data.update({"success": True, "board_fen": board_fen, "is_checkmate": True, "black": True})
                 board.reset()
-                return jsonify({"success": True, "stalemate": True})
-                
-            return jsonify({"success": True, "board_fen": board_fen, "is_checkmate" : False, "bpromotion": True})
+                emit('move_response', response_data, room=room)
+                socketio.emit('update_board', response_data, room=room)
+                return
             
+            if board.is_check():
+                print("in P promotion check")
+                response_data.update({"success": True, "wcheck": True, "bpromotion": True})
+                socketio.emit('update_board', response_data, room=room)
+                return
+            elif board.is_stalemate():
+                board.reset()
+                response_data.update({"success": True, "stalemate": True})
+                emit('move_response', response_data, room=room)
+                socketio.emit('update_board', response_data, room=room)
+
+                return
+            response_data.update({"success": True, "board_fen": board_fen, "is_checkmate": False, "bpromotion": True})
+            emit('move_response', response_data, room=room)
+            socketio.emit('update_board', response_data, room=room)
+
+
         elif chess_move in board.legal_moves:
             board.push(chess_move)
 
-            if board.is_stalemate() == True:
+            if board.is_stalemate():
                 board.reset()
-                return jsonify({"success": True, "stalemate": True})
-            
-            if board.is_checkmate() == True:
-                if board.outcome().winner == chess.WHITE:
-                    board.reset()
-                    return jsonify({"success": True, "board_fen": board_fen, "is_checkmate": True, "white": True})
-                else:
-                    board.reset()
-                    return jsonify({"success": True, "board_fen": board_fen, "is_checkmate": True, "black": True})
-                
+                response_data.update({"success": True, "stalemate": True})
+                emit('move_response', response_data, room=room)
+                socketio.emit('update_board', response_data, room=room)
+                return
 
-            return jsonify({"success": True, "board_fen": board_fen, "is_checkmate" : False})
+            elif board.is_checkmate():
+                if board.outcome().winner == chess.WHITE:
+                    response_data.update({"success": True, "board_fen": board_fen, "is_checkmate": True, "white": True})
+
+                else:
+                    response_data.update({"success": True, "board_fen": board_fen, "is_checkmate": True, "black": True})
+
+                board.reset()
+                emit('move_response', response_data, room=room)
+                socketio.emit('update_board', response_data, room=room)
+                return
+
+            elif board.is_check() and board.turn == chess.WHITE:
+                response_data.update({"success": True, "wcheck": True})
+                socketio.emit('update_board', response_data, room=room)
+
+            elif board.is_check() and board.turn == chess.BLACK:
+                response_data.update({"success": True, "bcheck": True})
+                socketio.emit('update_board', response_data, room=room)
+
+
+            response_data.update({"success": True, "board_fen": board_fen, "is_checkmate": False})
+
+            socketio.emit('update_board', response_data, room=room)
+
+            emit('move_response', response_data, room=room)
         else:
-            return jsonify({"success": False, "error": "Invalid move"}), 400
+            emit('move_response', {"success": False, "error": "Invalid move"}, room=room)
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 400
+        emit('move_response', {"success": False, "error": str(e)}, room=room)
+
+@app.route("/chess", methods=["POST", "GET"])
+@login_required
+def croom():
+    if request.method == "GET":
+        return render_template("searchchess.html")
+    else:
+        room = uuid4()
+        color = request.form.get('color')
+        if room and color:
+            user_id = session.get("user_id")
+
+            if room not in room_colors:
+                room_colors[room] = {'white': None, 'black': None}
+            print(room_colors[room])
+            r = room_colors[room]
+            if r[color] is not None:
+                return redirect(url_for('chessboard', roomid=room))
+            
+            r[color] = user_id
+
+            return redirect(url_for('chessboard', roomid=room))
+        elif room:
+            return redirect(url_for('chessboard', roomid=room))
+        else:
+            return render_template("searchchess.html")
