@@ -15,9 +15,8 @@ let isPlayer_O_Turn = false;
 let gameActive = true;  // To prevent further moves after game ends
 
 const socket = io();
-const room = prompt("Enter the game room: ");
+const room = {}
 
-socket.emit('join_game', { room });
 
 startGame();
 

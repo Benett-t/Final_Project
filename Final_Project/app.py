@@ -187,7 +187,7 @@ def logout():
     for i in range(len(tictactoe_rooms) - 1, -1, -1):  # Iterate in reverse to avoid skipping elements
         if tictactoe_rooms[i]["user_id"] == session["user_id"]:
             del tictactoe_rooms[i]
-            
+
     session.clear()
     return redirect("/login")
 
@@ -199,12 +199,16 @@ def tictacrooms():
 
     if request.method == "POST" and request.form.get("create"):
 
+        for room in tictactoe_rooms:
+            if room["user_id"] == session["user_id"]:
+                return redirect("/tictactoe", room=room)
+            
         room = {
-            "room_id" : random.randint(10000, 99999),
-            "user_id" : session["user_id"],
-            "username" : session["username"],
-            "palyers" : 1
-            }
+                "room_id" : random.randint(10000, 99999),
+                "user_id" : session["user_id"],
+                "username" : session["username"],
+                "players" : 1
+                }
         tictactoe_rooms.append(room)
         
 
