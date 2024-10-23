@@ -6,7 +6,6 @@ import bcrypt
 from functools import wraps
 import chess
 from uuid import uuid5, uuid4
-from collections import defaultdict
 import random
 
 app = Flask(__name__)
@@ -17,11 +16,7 @@ rooms_boards = {}
 room_colors = {}
 board = chess.Board()
 
-games = defaultdict(lambda: {
-    'players': [],
-    'current_turn': None,
-    'board': [None] * 9
-    })
+games = {}
 
 tictactoe_rooms = []
 # after closing website session deletes set to True if you want permament session.
@@ -195,80 +190,120 @@ def logout():
 @login_required
 def tictacrooms():
 
-    global tictactoe_rooms
+    global tictactoe_rooms, games
 
     if request.method == "POST" and request.form.get("create"):
 
         for room in tictactoe_rooms:
             if room["user_id"] == session["user_id"]:
-                return redirect("/tictactoe", room=room)
-            
-        room = {
-                "room_id" : random.randint(10000, 99999),
+                return redirect(f"/tictactoe?room={room['room_id']}")
+        
+        room_id = random.randint(10000, 99999)
+        while room_id in games:  # Ensure the room_id is unique
+            room_id = random.randint(10000, 99999)
+
+        new_room = {
+                "room_id" : room_id,
                 "user_id" : session["user_id"],
                 "username" : session["username"],
                 "players" : 1
                 }
-        tictactoe_rooms.append(room)
-        
+        tictactoe_rooms.append(new_room)
 
-        return redirect("/tictacrooms")
+        games[room_id] = {
+            "players" : [session["user_id"]],
+            "board" : [None] *9,
+            "current_turn" : session["user_id"]
+        }
+
+
+        print(f"Room created: {new_room}")  # Debugging statement
+        print(f"Current games: {games}")  # Debugging statement
+
+        return redirect(f"/tictactoe?room={room_id}")
 
     return render_template("tictacrooms.html", rooms=tictactoe_rooms)
 
 @app.route("/tictactoe", methods=["GET", "POST"])
 @login_required
 def tictactoe():
-    return render_template("tictactoe.html")
+    global games
+    
+
+    room_id_str = request.args.get("room")
+
+    print(f"Accessing room: {room_id_str}")  # Debugging statement
+
+    try:
+        room_id = int(room_id_str)  # Convert to integer
+    except ValueError:
+        print("Invalid room ID format!")  # Debugging statement
+        return "Room not found!", 404
+
+
+    if room_id not in games:
+        print("Room not found!")
+        return "Room not found!", 404
+    
+    room_info = games[room_id]
+    return render_template("tictactoe.html", room=room_info)
 
 @socketio.on('join_game')
 def on_join(data):
-    room = data['room']
-    player_id = session['user_id']  # Assuming you're using Flask-Login to handle user sessions
-    game = games[room]
+    room_id = data['room']
+    player_id = session['user_id']  # Get the current player's ID
+    game = games.get(room_id)
 
-    if len(game['players']) < 2:
-        game['players'].append(player_id)
-        if game['current_turn'] is None:
-            game['current_turn'] = player_id  # Set the first player as the one to start
-        join_room(room)
-        emit('message', f'Player {player_id} has joined room {room}', to=room)
+    if game and len(game['players']) < 2:
+        if player_id not in game['players']:
+            game['players'].append(player_id)
+            join_room(room_id)
+            emit('message', f'Player {player_id} has joined room {room_id}', to=room_id)
+            if len(game['players']) == 2:
+                emit('message', 'Game is ready to start!', to=room_id)
+        else:
+            emit('message', 'You are already in this room!', to=player_id)
     else:
-        emit('message', 'Room is full', to=player_id)  # Prevent more than 2 players
+        emit('message', 'Room is full or does not exist', to=player_id)  # Prevent more than 2 players
 
 @socketio.on('cell_click')
 def handle_cell_click(data):
-    room = data['room']
+    room_id = data['roomId']
     cell_index = data['cell']
     current_class = data['currentClass']
     player_id = session['user_id']  # Get the current player's ID
 
-    game = games[room]
-    
+    game = games.get(room_id)
+
     # Ensure the move is from the current player
-    if player_id == game['current_turn'] and game['board'][cell_index] is None:
-        # Update the board state
-        game['board'][cell_index] = current_class
-        
-        # Swap turns
-        next_player = game['players'][1] if game['current_turn'] == game['players'][0] else game['players'][0]
-        game['current_turn'] = next_player
-        
-        # Broadcast the move to the room
-        emit('update_board', {'cell': cell_index, 'currentClass': current_class}, to=room)
+    if game:
+        if player_id == game['current_turn'] and game['board'][cell_index] is None:
+            # Update the board state
+            game['board'][cell_index] = current_class
+            
+            # Swap turns
+            next_player = game['players'][1] if game['current_turn'] == game['players'][0] else game['players'][0]
+            game['current_turn'] = next_player
+            
+            # Broadcast the move to the room
+            emit('update_board', {'cell': cell_index, 'currentClass': current_class}, to=room_id)
+        else:
+            emit('message', 'Not your turn or invalid move!', to=player_id)
     else:
-        emit('message', 'Not your turn or invalid move!', to=player_id)
+        emit('message', 'Game not found!', to=player_id)
 
 @socketio.on('restart_game')
 def restart_game(data):
-    room = data['room']
-    game = games[room]
-    game['board'] = [None] * 9  # Reset the board
-    game['current_turn'] = game['players'][0]  # Set turn to the first player
-    emit('reset_board', to=room)
+    room_id = data['room']
+    game = games.get(room_id)
+    if game:
+        game['board'] = [None] * 9  # Reset the board
+        game['current_turn'] = game['players'][0]  # Set turn to the first player
+        emit('reset_board', to=room_id)
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000)
+
 
 
 

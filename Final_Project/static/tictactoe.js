@@ -15,8 +15,7 @@ let isPlayer_O_Turn = false;
 let gameActive = true;  // To prevent further moves after game ends
 
 const socket = io();
-const room = {}
-
+const roomId = document.getElementById('room-info').dataset.roomId;
 
 startGame();
 
@@ -43,11 +42,12 @@ function handleCellClick(e) {
   const cell = e.target;
   const currentClass = isPlayer_O_Turn ? PLAYER_O_CLASS : PLAYER_X_CLASS;
 
-  socket.emit('cell_click', { cell: [...cellElements].indexOf(cell), currentClass, room });
+  socket.emit('cell_click', { cell: [...cellElements].indexOf(cell), currentClass, roomId });
 }
 
 function placeMark(cell, currentClass) {
   cell.classList.add(currentClass);
+  cell.removeEventListener('click', handleCellClick);
 }
 
 function swapTurns() {
@@ -56,11 +56,7 @@ function swapTurns() {
 
 function setBoardHoverClass() {
   boardElement.classList.remove(PLAYER_X_CLASS, PLAYER_O_CLASS);
-  if (isPlayer_O_Turn) {
-    boardElement.classList.add(PLAYER_O_CLASS);
-  } else {
-    boardElement.classList.add(PLAYER_X_CLASS);
-  }
+  boardElement.classList.add(isPlayerOTurn ? PLAYER_O_CLASS : PLAYER_X_CLASS);
 }
 
 function endGame(draw) {
@@ -101,4 +97,9 @@ socket.on('update_board', ({ cell, currentClass }) => {
 
 socket.on('reset_board', () => {
   startGame();
+});
+
+socket.on('connect_error', () => {
+  console.error('Connection error with the server');
+  alert('Unable to connect to the game server. Please refresh the page.');
 });
