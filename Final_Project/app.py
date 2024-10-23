@@ -7,6 +7,7 @@ from functools import wraps
 import chess
 from uuid import uuid5, uuid4
 import random
+import time
 
 app = Flask(__name__)
 
@@ -310,6 +311,8 @@ if __name__ == '__main__':
 @app.route("/chessboard/<roomid>")
 @login_required
 def chessboard(roomid):
+    global room_colors
+    global rooms_boards
     user_id = session.get("user_id")
 
     if roomid not in rooms_boards:
@@ -321,7 +324,7 @@ def chessboard(roomid):
         room_colors[roomid] = {'white': None, 'black': None}
     
     color = room_colors[roomid]
-    print(color['white'], color['black'], user_id)
+
 
     if color['white'] == user_id:
         currentplayer = 'white'
@@ -528,23 +531,22 @@ def handle_move(data):
 @app.route("/chess", methods=["POST", "GET"])
 @login_required
 def croom():
+    global room_colors
     if request.method == "GET":
         return render_template("searchchess.html")
     else:
-        room = uuid4()
+        room = str(uuid4())
         color = request.form.get('color')
         if room and color:
             user_id = session.get("user_id")
 
             if room not in room_colors:
                 room_colors[room] = {'white': None, 'black': None}
-            print(room_colors[room])
-            r = room_colors[room]
-            if r[color] is not None:
+
+            if room_colors[room][color] is None:
+                room_colors[room][color] = user_id
                 return redirect(url_for('chessboard', roomid=room))
             
-            r[color] = user_id
-
             return redirect(url_for('chessboard', roomid=room))
         elif room:
             return redirect(url_for('chessboard', roomid=room))

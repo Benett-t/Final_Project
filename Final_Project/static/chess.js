@@ -470,14 +470,17 @@ function updateBoard(move, is_checkmate, white, black, wpromotion, bpromotion, s
                         if (white == true) {
                             matesound.currentTime = 0;
                             matesound.play();
+                            alert("Checkmate")
                         } else if (black == true) {
                             matesound.currentTime = 0;
                             matesound.play();
+                            alert("Checkmate")
                         }
                     }
                     if (stalemate == true) {
                         matesound.currentTime = 0;
                         matesound.play();
+                        alert("stalemate")
                     }
                 }, 500);
             }
@@ -517,14 +520,17 @@ function updateBoard(move, is_checkmate, white, black, wpromotion, bpromotion, s
                         if (white == true) {
                             matesound.currentTime = 0;
                             matesound.play();
+                            alert("Checkmate")
                         } else if (black == true) {
                             matesound.currentTime = 0;
                             matesound.play();
+                            alert("Checkmate")
                         }
                     }
                     if (stalemate == true) {
                         matesound.currentTime = 0;
                         matesound.play();
+                        alert("Stalemate")
                     }
             } 
         }
