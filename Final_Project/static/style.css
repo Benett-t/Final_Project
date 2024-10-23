@@ -148,10 +148,15 @@ body {
 /* Style for tic tac toe */
 
 :root {
-	--cell-size: 200px;
+	--cell-size: 20vh;
 	--color: #f0d9b5; /* for hover */
 	--color-set: #b58863; 
 	--l: 10px;
+}
+@media (max-width: 480px) {
+    :root {
+        --cell-size: 10vh;
+    }
 }
 
 .board {
