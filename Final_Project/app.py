@@ -5,7 +5,7 @@ import sqlite3
 import bcrypt
 from functools import wraps
 import chess
-from uuid import uuid5, uuid4
+from uuid import uuid4
 import random
 import time
 
