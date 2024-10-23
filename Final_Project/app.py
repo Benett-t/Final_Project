@@ -7,6 +7,7 @@ from functools import wraps
 import chess
 from uuid import uuid5, uuid4
 from collections import defaultdict
+import random
 
 app = Flask(__name__)
 
@@ -21,6 +22,8 @@ games = defaultdict(lambda: {
     'current_turn': None,
     'board': [None] * 9
     })
+
+tictactoe_rooms = []
 # after closing website session deletes set to True if you want permament session.
 app.config["SESSION_PERMANENT"] = True
 # Save session in filesystem insted of browser
@@ -98,6 +101,7 @@ def login():
                 
                 if user and bcrypt.checkpw(password=password, hashed_password=user[1]):
                     session["user_id"] = user[0]
+                    session["username"] = username
                     return redirect("/")
 
                 else:
@@ -158,6 +162,7 @@ def register():
                 uuid = cursor.fetchone()
 
                 session["user_id"] = uuid[0]
+                session["username"] = username
 
                 return redirect("/")
             except ValueError:
@@ -176,10 +181,38 @@ def register():
 @app.route("/logout")
 @login_required
 def logout():
+
+    global tictacrooms
+
+    for i in range(len(tictactoe_rooms) - 1, -1, -1):  # Iterate in reverse to avoid skipping elements
+        if tictactoe_rooms[i]["user_id"] == session["user_id"]:
+            del tictactoe_rooms[i]
+            
     session.clear()
     return redirect("/login")
 
-@app.route("/tictactoe")
+@app.route("/tictacrooms", methods=["GET", "POST"])
+@login_required
+def tictacrooms():
+
+    global tictactoe_rooms
+
+    if request.method == "POST" and request.form.get("create"):
+
+        room = {
+            "room_id" : random.randint(10000, 99999),
+            "user_id" : session["user_id"],
+            "username" : session["username"],
+            "palyers" : 1
+            }
+        tictactoe_rooms.append(room)
+        
+
+        return redirect("/tictacrooms")
+
+    return render_template("tictacrooms.html", rooms=tictactoe_rooms)
+
+@app.route("/tictactoe", methods=["GET", "POST"])
 @login_required
 def tictactoe():
     return render_template("tictactoe.html")

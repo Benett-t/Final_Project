@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+
+
+
+{% block title %}
+    Tic Tac Toe
+{% endblock %}
+
+{% block main %}
+    <h1>Tic Tac Toe rooms</h1>
+    <div>
+        <h3>Available rooms</h3>
+    </div>
+    <div>
+        <table class="table table-striped">
+            <thead>
+              <tr>
+                <th scope="col">Room ID</th>
+                <th scope="col">User</th>
+                <th scope="col">Join</th>
+              </tr>
+            </thead>
+            <tbody>
+                {% for room in rooms %}
+              <tr>
+                <td> {{ room.room_id }}  </td>
+                <td> {{ room.username }} </td>
+                <td> <button type="button" class="btn btn-primary btn-sm"> Join </button> </td>
+              </tr>
+                {% endfor %}
+            </tbody>
+          </table>
+    </div>
+    <div>
+        <form action="/tictacrooms" method="POST">
+             <input class="btn btn-primary" value="Create New Room" type="submit" name="create">
+        </form>
+       
+    </div>
+{% endblock %}
