@@ -296,22 +296,27 @@ function handleMouseUp(event) {
 // Setting up the listener to handle incoming moves
 socket.on('update_board', function(data) {
     if (data.success) {
-        // Update the board based on the opponent's move
-        updateBoard(data.move, data.is_checkmate, data.white, data.black, data.wpromotion, data.bpromotion, data.stalemate);
-        updateCheckSquares(data.bcheck, data.wcheck, data.is_checkmate, data.black, data.white);
-
-        // Handle castling responses
+        // castle
         if (data.OO) {
+            updateBoard('e1g1');
             updateBoard('h1f1');
             updateCheckSquares(data.bcheck, data.wcheck, data.is_checkmate, data.black, data.white);
         } else if (data.OOO) {
+            updateBoard('e1c1')
             updateBoard('a1d1');
             updateCheckSquares(data.bcheck, data.wcheck, data.is_checkmate, data.black, data.white);
         } else if (data.oo) {
+            updateBoard('e8g8')
             updateBoard('h8f8');
             updateCheckSquares(data.bcheck, data.wcheck, data.is_checkmate, data.black, data.white);
         } else if (data.ooo) {
+            updateBoard('e8c8')
             updateBoard('a8d8');
+            updateCheckSquares(data.bcheck, data.wcheck, data.is_checkmate, data.black, data.white);
+        }
+        // Update the board based on the opponent's move
+        else {
+            updateBoard(data.move, data.is_checkmate, data.white, data.black, data.wpromotion, data.bpromotion, data.stalemate);
             updateCheckSquares(data.bcheck, data.wcheck, data.is_checkmate, data.black, data.white);
         }
     } else {
@@ -325,6 +330,7 @@ socket.on('update_board', function(data) {
 // Send the move to the server
 function submitMove(move, square, callback = () => {}) {
     // Emit the move_piece event to the server
+
     socket.emit('move_piece', { move: move, room: roomid,});
 
     // Listen for the response from the server

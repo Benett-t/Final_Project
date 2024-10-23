@@ -386,7 +386,7 @@ def handle_move(data):
         # Prepare the base response with the move
         response_data = {"move": move}  # Include the move in all response
 
-        if str(piece) == 'K' and chess_move.from_square == 4 and chess_move.to_square == 6 and board.has_kingside_castling_rights(chess.WHITE):
+        if str(piece) == 'K' and chess_move.from_square == 4 and chess_move.to_square in (6,7) and board.has_kingside_castling_rights(chess.WHITE):
             board.push(chess_move)
             if board.is_check():
                 print("sending OO")
@@ -397,7 +397,7 @@ def handle_move(data):
             socketio.emit('update_board', response_data, room=room)
             return
 
-        elif str(piece) == 'K' and chess_move.from_square == 4 and chess_move.to_square == 2 and board.has_queenside_castling_rights(chess.WHITE):
+        elif str(piece) == 'K' and chess_move.from_square == 4 and chess_move.to_square in (2,1,0) and board.has_queenside_castling_rights(chess.WHITE):
             board.push(chess_move)
             if board.is_check():
                 response_data.update({"success": True, "checkb": True, "OOO": True})
@@ -407,7 +407,7 @@ def handle_move(data):
             socketio.emit('update_board', response_data, room=room)
             return
 
-        elif str(piece) == 'k' and chess_move.from_square == 60 and chess_move.to_square == 62 and board.has_kingside_castling_rights(chess.BLACK):
+        elif str(piece) == 'k' and chess_move.from_square == 60 and chess_move.to_square in (62,63) and board.has_kingside_castling_rights(chess.BLACK):
             board.push(chess_move)
             if board.is_check():
                 response_data.update({"success": True, "checkw": True, "oo": True})
@@ -420,7 +420,7 @@ def handle_move(data):
             return
 
 
-        elif str(piece) == 'k' and chess_move.from_square == 60 and chess_move.to_square == 58 and board.has_queenside_castling_rights(chess.BLACK):
+        elif str(piece) == 'k' and chess_move.from_square == 60 and chess_move.to_square in (58,57,56) and board.has_queenside_castling_rights(chess.BLACK):
             board.push(chess_move)
             if board.is_check():
                 response_data.update({"success": True, "checkw": True, "ooo": True})
