@@ -505,8 +505,8 @@ def handle_move(data):
                     response_data.update({"success": True, "board_fen": board_fen, "is_checkmate": True, "black": True})
 
                 board.reset()
-                emit('move_response', response_data, room=room)
                 socketio.emit('update_board', response_data, room=room)
+                emit('move_response', response_data, room=room)
                 return
 
             elif board.is_check() and board.turn == chess.WHITE:

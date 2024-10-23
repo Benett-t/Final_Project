@@ -394,7 +394,6 @@ function updateCheckSquares(checkb, checkw, checkmate, black, white) {
 }
 function updateBoard(move, is_checkmate, white, black, wpromotion, bpromotion, stalemate) {
     const squares = document.querySelectorAll('.square')
-
     squares.forEach(square => {
         square.classList.remove('tosquare');
         square.classList.remove('fromsquare')
@@ -421,6 +420,34 @@ function updateBoard(move, is_checkmate, white, black, wpromotion, bpromotion, s
     }
     else if (bpromotion == true) {
         piece = 'q'
+    }
+
+    if (stalemate == true) {
+        matesound.currentTime = 0;
+        matesound.play();
+        let result = 'Draw!';
+    
+        // Display the result to both players
+        document.getElementById('resultMessage').textContent = result;
+        const resultM = new bootstrap.Modal(document.getElementById('resultModal'));
+        resultM.show();
+    }
+
+    if (is_checkmate == true) {
+        matesound.currentTime = 0;
+        matesound.play();
+        let result = '';
+    
+        if (white == true) {
+            result = 'White Wins By Checkmate!';
+        } else if (black == true) {
+            result = 'Black Wins By Checkmate!';
+        }
+    
+        // Display the result to both players
+        document.getElementById('resultMessage').textContent = result;
+        const resultM = new bootstrap.Modal(document.getElementById('resultModal'));
+        resultM.show();
     }
 
     if (toElement && fromElement) {
@@ -472,22 +499,7 @@ function updateBoard(move, is_checkmate, white, black, wpromotion, bpromotion, s
                     boardState[toSquare] = piece;
                     delete boardState[fromSquare];
 
-                    if (is_checkmate == true) {
-                        if (white == true) {
-                            matesound.currentTime = 0;
-                            matesound.play();
-                            alert("Checkmate")
-                        } else if (black == true) {
-                            matesound.currentTime = 0;
-                            matesound.play();
-                            alert("Checkmate")
-                        }
-                    }
-                    if (stalemate == true) {
-                        matesound.currentTime = 0;
-                        matesound.play();
-                        alert("stalemate")
-                    }
+                    
                 }, 500);
             }
             else {
@@ -522,22 +534,7 @@ function updateBoard(move, is_checkmate, white, black, wpromotion, bpromotion, s
                     // Update the board state
                     boardState[toSquare] = piece;
                     delete boardState[fromSquare];
-                    if (is_checkmate == true) {
-                        if (white == true) {
-                            matesound.currentTime = 0;
-                            matesound.play();
-                            alert("Checkmate")
-                        } else if (black == true) {
-                            matesound.currentTime = 0;
-                            matesound.play();
-                            alert("Checkmate")
-                        }
-                    }
-                    if (stalemate == true) {
-                        matesound.currentTime = 0;
-                        matesound.play();
-                        alert("Stalemate")
-                    }
+                    
             } 
         }
     }
