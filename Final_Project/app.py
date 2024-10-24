@@ -321,7 +321,7 @@ def chessboard(roomid):
     board_fen = rooms_boards[roomid].fen()
 
     if roomid not in room_colors:
-        room_colors[roomid] = {'white': None, 'black': None, 'visibility': 'public'}
+        room_colors[roomid] = {'white': None, 'black': None, 'visibility': 'public', 'room_id': roomid}
     
     color = room_colors[roomid]
 
@@ -533,17 +533,30 @@ def handle_move(data):
 def croom():
     global room_colors
     if request.method == "GET":
-        return render_template("searchchess.html")
+        public_rooms = []
+        for room_id, room_info in room_colors.items():  # room_id is the key, room_info is the dict
+            if room_info['visibility'] == "public":
+                # Check if both white and black are not filled
+                if room_info['white'] is None or room_info['black'] is None:
+                    username = room_info['white'] or room_info['black']  # Find the player who joined
+                    if username:
+                        color = "white" if room_info['white'] == username else "black"  # Determine the color
+                        public_rooms.append({
+                            "room_id": room_id, 
+                            "username": username,
+                            "color": color  # Add color information
+                        })
+        
+        return render_template("searchchess.html", rooms=public_rooms)
     else:
         room = str(uuid4())
         color = request.form.get('color')
-        visibility = request.form.get('visibility')
-        print(visibility)
+        visibility = str(request.form.get('visibility'))
         if room and color:
             username = session.get("username")
 
             if room not in room_colors:
-                room_colors[room] = {'white': None, 'black': None, 'visibility': visibility}
+                room_colors[room] = {'white': None, 'black': None, 'visibility': visibility, 'room_id': room}
 
             if room_colors[room][color] is None:
                 room_colors[room][color] = username
