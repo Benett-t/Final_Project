@@ -181,7 +181,7 @@ def logout():
     global tictacrooms
 
     for i in range(len(tictactoe_rooms) - 1, -1, -1):  # Iterate in reverse to avoid skipping elements
-        if tictactoe_rooms[i]["user_id"] == session["user_id"]:
+        if tictactoe_rooms[i]["user_id"] == session.get("user_id"):
             del tictactoe_rooms[i]
 
     session.clear()
@@ -196,7 +196,7 @@ def tictacrooms():
     if request.method == "POST" and request.form.get("create"):
 
         for room in tictactoe_rooms:
-            if room["user_id"] == session["user_id"]:
+            if room["user_id"] == session.get("user_id"):
                 return redirect(f"/tictactoe?room={room['room_id']}")
         
         room_id = random.randint(10000, 99999)
@@ -205,16 +205,16 @@ def tictacrooms():
 
         new_room = {
                 "room_id" : room_id,
-                "user_id" : session["user_id"],
-                "username" : session["username"],
+                "user_id" : session.get("user_id"),
+                "username" : session.get("username"),
                 "players" : 1
                 }
         tictactoe_rooms.append(new_room)
 
         games[room_id] = {
-            "players" : [session["user_id"]],
+            "players" : [session.get("user_id")],
             "board" : [None] *9,
-            "current_turn" : session["user_id"]
+            "current_turn" : session.get("user_id")
         }
 
 
@@ -313,7 +313,7 @@ if __name__ == '__main__':
 def chessboard(roomid):
     global room_colors
     global rooms_boards
-    user_id = session.get("user_id")
+    username = session.get("username")
 
     if roomid not in rooms_boards:
         rooms_boards[roomid] = chess.Board()
@@ -321,26 +321,26 @@ def chessboard(roomid):
     board_fen = rooms_boards[roomid].fen()
 
     if roomid not in room_colors:
-        room_colors[roomid] = {'white': None, 'black': None}
+        room_colors[roomid] = {'white': None, 'black': None, 'visibility': 'public'}
     
     color = room_colors[roomid]
 
 
-    if color['white'] == user_id:
+    if color['white'] == username:
         currentplayer = 'white'
         return render_template("chess.html", board_fen=board_fen, currentplayer=currentplayer, roomid=roomid)
     
-    elif color['black'] == user_id:
+    elif color['black'] == username:
         currentplayer = 'black'
         return render_template("chess.html", board_fen=board_fen, currentplayer=currentplayer, roomid=roomid)
     
     elif color['white'] is None:
-        color['white'] = user_id
+        color['white'] = username
         currentplayer = 'white'
         return render_template("chess.html", board_fen=board_fen, currentplayer=currentplayer, roomid=roomid)
     
     elif color['black'] is None:
-        color['black'] = user_id
+        color['black'] = username
         currentplayer = 'black'
         return render_template("chess.html", board_fen=board_fen, currentplayer=currentplayer, roomid=roomid)
     else:
@@ -537,14 +537,16 @@ def croom():
     else:
         room = str(uuid4())
         color = request.form.get('color')
+        visibility = request.form.get('visibility')
+        print(visibility)
         if room and color:
-            user_id = session.get("user_id")
+            username = session.get("username")
 
             if room not in room_colors:
-                room_colors[room] = {'white': None, 'black': None}
+                room_colors[room] = {'white': None, 'black': None, 'visibility': visibility}
 
             if room_colors[room][color] is None:
-                room_colors[room][color] = user_id
+                room_colors[room][color] = username
                 return redirect(url_for('chessboard', roomid=room))
             
             return redirect(url_for('chessboard', roomid=room))

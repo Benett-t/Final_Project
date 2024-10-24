@@ -13,6 +13,15 @@ Chess
         <option value='white'>White</option>
         <option value='black'>Black</option>
       </select>
+      <div class="form-group">
+        <fieldset>
+          <legend>Match Visibility</legend>
+            <input type="radio" class="form-check-input" id="private" name="visibility" value="private" required>
+            <label class="form-check-label" for="private">Private</label>
+            <input type="radio" class="form-check-input" id="public" name="visibility" value="public" checked required>
+            <label class="form-check-label" for="public">Public</label>
+        </fieldset>
+      </div>
     </div>
     
     <button type="submit" class="btn btn-primary mt-3">Start Game</button>
