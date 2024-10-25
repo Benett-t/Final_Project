@@ -1,15 +1,13 @@
 {% extends "layout.html" %}
 
-
-
 {% block title %}
-    Tic Tac Toe
+    Tic Tac Toe Rooms
 {% endblock %}
 
 {% block main %}
-    <h1>Tic Tac Toe rooms</h1>
+    <h1>Tic Tac Toe Rooms</h1>
     <div>
-        <h3>Available rooms</h3>
+        <h3>Available Rooms</h3>
     </div>
     <div>
         <table class="table table-striped">
@@ -22,12 +20,16 @@
             </thead>
             <tbody>
                 {% for room in rooms %}
-              <tr>
-                <td> {{ room.room_id }}  </td>
-                <td> {{ room.username }} </td>
-                <td> <form action="/tictacrooms" method="POST">
-                  <input class="btn btn-primary" value="Create New Room" type="submit" name="create"> </form> </td>
-              </tr>
+                  <tr>
+                    <td>{{ room.room_id }}</td>
+                    <td>{{ room.username }}</td>
+                    <td>
+                      <form action="/tictacrooms" method="POST" style="display:inline;">
+                          <input type="hidden" name="room_id" value="{{ room.room_id }}">
+                          <input class="btn btn-primary" value="Join Room" type="submit" name="join">
+                      </form>
+                    </td>
+                  </tr>
                 {% endfor %}
             </tbody>
           </table>
@@ -36,6 +38,15 @@
         <form action="/tictacrooms" method="POST">
              <input class="btn btn-primary" value="Create New Room" type="submit" name="create">
         </form>
-       
     </div>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul class="flashes">
+          {% for message in messages %}
+            <li>{{ message }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
 {% endblock %}

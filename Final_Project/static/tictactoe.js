@@ -1,105 +1,103 @@
-const PLAYER_X_CLASS = 'x';
-const PLAYER_O_CLASS = 'circle';
-const WINNING_COMBINATIONS = [
-  [0, 1, 2], [3, 4, 5], [6, 7, 8],
-  [0, 3, 6], [1, 4, 7], [2, 5, 8],
-  [0, 4, 8], [2, 4, 6]
-];
+document.addEventListener("DOMContentLoaded", () => {
+  const cells = document.querySelectorAll("[data-cell]");
+  const winningMessageElement = document.getElementById("winningMessage");
+  const winningMessageTextElement = document.getElementById("winningMessageText");
+  const restartButton = document.getElementById("restartButton");
+  const roomId = "1"; // Replace with your room ID logic
+  let currentClass = "X"; // Assume player X starts
+  let gameActive = true;
 
-const cellElements = document.querySelectorAll('[data-cell]');
-const boardElement = document.getElementById('board');
-const winningMessageElement = document.getElementById('winningMessage');
-const restartButton = document.getElementById('restartButton');
-const winningMessageTextElement = document.getElementById('winningMessageText');
-let isPlayer_O_Turn = false;
-let gameActive = true;  // To prevent further moves after game ends
-
-const socket = io();
-const roomId = document.getElementById('room-info').dataset.roomId;
-
-startGame();
-
-restartButton.addEventListener('click', () => {
-  socket.emit('restart_game', { room });
-  startGame();
-});
-
-function startGame() {
-  isPlayer_O_Turn = false;
-  gameActive = true;  // Allow moves again
-  cellElements.forEach(cell => {
-    cell.classList.remove(PLAYER_X_CLASS);
-    cell.classList.remove(PLAYER_O_CLASS);
-    cell.removeEventListener('click', handleCellClick);
-    cell.addEventListener('click', handleCellClick, { once: true });
+  // Socket.io connection
+  const socket = io();
+  socket.on('connect', () => {
+      console.log('Connected to server');
   });
-  setBoardHoverClass();
-  winningMessageElement.classList.remove('show');
-}
 
-function handleCellClick(e) {
-  if (!gameActive) return;  // Ignore clicks if the game is over
-  const cell = e.target;
-  const currentClass = isPlayer_O_Turn ? PLAYER_O_CLASS : PLAYER_X_CLASS;
+  // Handle cell click
+  cells.forEach(cell => {
+      cell.addEventListener("click", handleCellClick);
+  });
 
-  socket.emit('cell_click', { cell: [...cellElements].indexOf(cell), currentClass, roomId });
-}
+  function handleCellClick(e) {
+      const cell = e.target;
+      const cellIndex = Array.from(cells).indexOf(cell);
 
-function placeMark(cell, currentClass) {
-  cell.classList.add(currentClass);
-  cell.removeEventListener('click', handleCellClick);
-}
+      console.log("Cell clicked:", cellIndex); // Debug log for cell click
 
-function swapTurns() {
-  isPlayer_O_Turn = !isPlayer_O_Turn;
-}
+      // Prevent click if game is not active or cell already filled
+      if (!gameActive || cell.classList.contains("X") || cell.classList.contains("O")) {
+          console.log("Cell is already occupied or game is not active."); // Debug log
+          return;
+      }
 
-function setBoardHoverClass() {
-  boardElement.classList.remove(PLAYER_X_CLASS, PLAYER_O_CLASS);
-  boardElement.classList.add(isPlayerOTurn ? PLAYER_O_CLASS : PLAYER_X_CLASS);
-}
+      // Emit the move to the server
+      socket.emit('cell_click', {
+          roomId: roomId,
+          cell: cellIndex,
+          currentClass: currentClass,
+      });
 
-function endGame(draw) {
-  gameActive = false;  // Prevent further moves
-  if (draw) {
-    winningMessageTextElement.innerText = "It's a draw!";
-  } else {
-    winningMessageTextElement.innerText = `Player with ${isPlayer_O_Turn ? "O's" : "X's"} wins!`;
+      // Place the mark locally
+      placeMark(cell, currentClass);
+      
+      // Check for winning message locally
+      if (checkWinCondition(currentClass)) {
+          gameActive = false;
+          winningMessageTextElement.textContent = `Player ${currentClass} wins!`;
+          winningMessageElement.classList.add("show");
+          return;
+      }
+
+      // Switch turn to the next player
+      switchTurn();
   }
-  winningMessageElement.classList.add('show');
-}
 
-function isDraw() {
-  return [...cellElements].every(cell => {
-    return cell.classList.contains(PLAYER_X_CLASS) || cell.classList.contains(PLAYER_O_CLASS);
-  });
-}
-
-function checkWin(currentClass) {
-  return WINNING_COMBINATIONS.some(combination => {
-    return combination.every(index => {
-      return cellElements[index].classList.contains(currentClass);
-    });
-  });
-}
-
-socket.on('update_board', ({ cell, currentClass }) => {
-  placeMark(cellElements[cell], currentClass);
-  if (checkWin(currentClass)) {
-    endGame(false);
-  } else if (isDraw()) {
-    endGame(true);
-  } else {
-    swapTurns();
-    setBoardHoverClass();
+  function placeMark(cell, currentClass) {
+      cell.classList.add(currentClass);
   }
-});
 
-socket.on('reset_board', () => {
-  startGame();
-});
+  socket.on('update_board', data => {
+      const { cell, currentClass } = data;
+      const cellToUpdate = cells[cell];
+      placeMark(cellToUpdate, currentClass);
+      if (checkWinCondition(currentClass)) {
+          gameActive = false;
+          winningMessageTextElement.textContent = `Player ${currentClass} wins!`;
+          winningMessageElement.classList.add("show");
+      } else {
+          switchTurn(); // Switch turn after update
+      }
+  });
 
-socket.on('connect_error', () => {
-  console.error('Connection error with the server');
-  alert('Unable to connect to the game server. Please refresh the page.');
+  function checkWinCondition(player) {
+      const winPatterns = [
+          [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+          [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
+          [0, 4, 8], [2, 4, 6],             // Diagonals
+      ];
+      return winPatterns.some(pattern => {
+          return pattern.every(index => {
+              return cells[index].classList.contains(player);
+          });
+      });
+  }
+
+  // Handle game restart
+  restartButton.addEventListener("click", () => {
+      socket.emit('restart_game', { room: roomId });
+  });
+
+  // Reset board from the server
+  socket.on('reset_board', () => {
+      cells.forEach(cell => {
+          cell.classList.remove("X", "O"); // Clear cells
+      });
+      currentClass = "X"; // Reset to player X
+      gameActive = true;
+      winningMessageElement.classList.remove("show"); // Hide winning message
+  });
+
+  function switchTurn() {
+      currentClass = currentClass === "X" ? "O" : "X"; // Switch between X and O
+  }
 });

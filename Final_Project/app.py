@@ -1,4 +1,4 @@
-from flask import session, Flask, render_template, request, redirect, url_for
+from flask import session, Flask, render_template, request, redirect, url_for, flash
 from flask_session import Session
 from flask_socketio import SocketIO, emit, join_room, leave_room
 import sqlite3
@@ -190,111 +190,152 @@ def logout():
 @app.route("/tictacrooms", methods=["GET", "POST"])
 @login_required
 def tictacrooms():
-
     global tictactoe_rooms, games
 
-    if request.method == "POST" and request.form.get("create"):
+    if request.method == "POST":
+        # Handle room creation
+        if request.form.get("create"):
+            # Check if the user already has a room
+            existing_room = next((room for room in tictactoe_rooms if room["user_id"] == session.get("user_id")), None)
+            if existing_room:
+                return redirect(f"/tictactoe?room={existing_room['room_id']}")  # Redirect to existing room
 
-        for room in tictactoe_rooms:
-            if room["user_id"] == session.get("user_id"):
-                return redirect(f"/tictactoe?room={room['room_id']}")
-        
-        room_id = random.randint(10000, 99999)
-        while room_id in games:  # Ensure the room_id is unique
+            # Generate a unique room ID
             room_id = random.randint(10000, 99999)
+            while room_id in games:  # Ensure the room_id is unique
+                room_id = random.randint(10000, 99999)
 
-        new_room = {
-                "room_id" : room_id,
-                "user_id" : session.get("user_id"),
-                "username" : session.get("username"),
-                "players" : 1
-                }
-        tictactoe_rooms.append(new_room)
+            # Create a new room
+            new_room = {
+                "room_id": room_id,
+                "user_id": session.get("user_id"),
+                "username": session.get("username"),
+                "players": 1  # Starting with one player
+            }
+            tictactoe_rooms.append(new_room)
 
-        games[room_id] = {
-            "players" : [session.get("user_id")],
-            "board" : [None] *9,
-            "current_turn" : session.get("user_id")
-        }
+            # Initialize the game state
+            games[room_id] = {
+                "players": [session.get("user_id")],  # Add the creator as the first player
+                "board": [None] * 9,
+                "current_turn": session.get("user_id")
+            }
 
-    elif request.method == "POST" and request.form.get("join"):
+            print(f"Room created: {new_room}")  # Debugging statement
+            print(f"Current games: {games}")  # Debugging statement
 
-        return redirect(f"/tictactoe?room={room['room_id']}")
+            return redirect(f"/tictactoe?room={room_id}")  # Redirect to the new game room
 
-        print(f"Room created: {new_room}")  # Debugging statement
-        print(f"Current games: {games}")  # Debugging statement
+        # Handle joining a room
+        elif request.form.get("join"):
+            room_id = request.form.get("room_id")  # Get the room ID from the form
+            if not room_id:  # Check if room_id is not present
+                flash('Room ID is required', 'error')  # Flash message if room ID is not provided
+                return redirect('/tictacrooms')
 
-        return redirect(f"/tictactoe?room={room_id}")
+            try:
+                room_id = int(room_id)  # Convert room_id to an integer
+            except ValueError:
+                flash('Invalid room ID', 'error')  # Flash message if room ID is invalid
+                return redirect('/tictacrooms')
 
+            # Find the room in tictactoe_rooms by the room_id
+            room = next((r for r in tictactoe_rooms if r["room_id"] == room_id), None)
+
+            print(f"Attempting to join room: {room_id}")  # Debugging statement
+            print(f"Current players in room: {games.get(room_id, {}).get('players', [])}")  # Debugging statement
+
+            # Check if the room exists
+            if room:
+                # Check if the game exists and if there's space for a new player
+                if room_id in games:
+                    if len(games[room_id]["players"]) < 2:
+                        # Add user to the players list
+                        games[room_id]["players"].append(session.get("user_id"))  
+                        return redirect(f"/tictactoe?room={room_id}")  # Redirect to the game room
+                    else:
+                        flash('Room is full', 'error')  # Flash message if the room is full
+                else:
+                    flash('Game does not exist', 'error')  # Flash message if the game does not exist
+            else:
+                flash('Room does not exist', 'error')  # Flash message if room does not exist
+            
+            return redirect('/tictacrooms')  # Redirect back to the rooms list if any checks fail
+
+    # Render the rooms page
     return render_template("tictacrooms.html", rooms=tictactoe_rooms)
 
 @app.route("/tictactoe", methods=["GET", "POST"])
 @login_required
 def tictactoe():
-    global games
-    
-
     room_id_str = request.args.get("room")
-
-    print(f"Accessing room: {room_id_str}")  # Debugging statement
-
     try:
-        room_id = int(room_id_str)  # Convert to integer
-    except ValueError:
-        print("Invalid room ID format!")  # Debugging statement
-        return "Room not found!", 404
-
+        room_id = int(room_id_str)
+    except (ValueError, TypeError):
+        return "Room not found!", 404  # Return 404 if room ID is invalid
 
     if room_id not in games:
-        print("Room not found!")
-        return "Room not found!", 404
-    
+        return "Room not found!", 404  # Return 404 if room ID does not exist
+
     room_info = games[room_id]
-    return render_template("tictactoe.html", room=room_info)
+    return render_template("tictactoe.html", room=room_info)  # Render game page
 
 @socketio.on('join_game')
 def on_join(data):
     room_id = data['room']
-    player_id = session['user_id']  # Get the current player's ID
+    player_id = session['user_id']
     game = games.get(room_id)
 
+    # Ensure the game exists and there is space for players
     if game and len(game['players']) < 2:
         if player_id not in game['players']:
             game['players'].append(player_id)
-            join_room(room_id)
-            emit('message', f'Player {player_id} has joined room {room_id}', to=room_id)
+            join_room(room_id)  # Add user to room
+            socketio.emit('message', {'msg': f'Player {player_id} has joined room {room_id}'}, to=room_id)
             if len(game['players']) == 2:
-                emit('message', 'Game is ready to start!', to=room_id)
+                socketio.emit('message', {'msg': 'Game is ready to start!'}, to=room_id)
         else:
-            emit('message', 'You are already in this room!', to=player_id)
+            socketio.emit('message', {'msg': 'You are already in this room!'}, room=request.sid)
     else:
-        emit('message', 'Room is full or does not exist', to=player_id)  # Prevent more than 2 players
+        socketio.emit('message', {'msg': 'Room is full or does not exist'}, room=request.sid)
 
 @socketio.on('cell_click')
 def handle_cell_click(data):
     room_id = data['roomId']
     cell_index = data['cell']
     current_class = data['currentClass']
-    player_id = session['user_id']  # Get the current player's ID
-
+    player_id = session['user_id']  # Get current player ID
     game = games.get(room_id)
 
-    # Ensure the move is from the current player
+    # Debug: Log current turn and player trying to play
+    print(f"Current turn: {game['current_turn']}, Player trying to play: {player_id}")
+
     if game:
         if player_id == game['current_turn'] and game['board'][cell_index] is None:
-            # Update the board state
-            game['board'][cell_index] = current_class
+            game['board'][cell_index] = current_class  # Update the board with the current player's move
+
+            # Check for win or draw
+            if check_winner(game['board'], current_class):
+                emit('message', {'msg': f'Player {current_class} wins!'}, to=room_id)
+                emit('reset_board', to=room_id)  # Reset the board for the next game
+                return
+            elif all(cell is not None for cell in game['board']):  # Check for draw
+                emit('message', {'msg': 'It\'s a draw!'}, to=room_id)
+                emit('reset_board', to=room_id)  # Reset the board for the next game
+                return
+
+            # Update the turn to the next player
+            next_player_index = (game['players'].index(player_id) + 1) % 2
+            game['current_turn'] = game['players'][next_player_index]  # Switch turn to the next player
             
-            # Swap turns
-            next_player = game['players'][1] if game['current_turn'] == game['players'][0] else game['players'][0]
-            game['current_turn'] = next_player
-            
-            # Broadcast the move to the room
+            # Send updated game state
             emit('update_board', {'cell': cell_index, 'currentClass': current_class}, to=room_id)
         else:
-            emit('message', 'Not your turn or invalid move!', to=player_id)
+            emit('message', {'msg': 'Not your turn or invalid move!'}, room=request.sid)
     else:
-        emit('message', 'Game not found!', to=player_id)
+        emit('message', {'msg': 'Game not found!'}, room=request.sid)
+
+
 
 @socketio.on('restart_game')
 def restart_game(data):
@@ -302,12 +343,31 @@ def restart_game(data):
     game = games.get(room_id)
     if game:
         game['board'] = [None] * 9  # Reset the board
-        game['current_turn'] = game['players'][0]  # Set turn to the first player
-        emit('reset_board', to=room_id)
+        game['current_turn'] = game['players'][0]  # Reset to the first player
+        socketio.emit('reset_board', to=room_id)  # Notify clients to reset their boards
+
+
+def check_winner(board, player):
+    # Define winning combinations
+    winning_combinations = [
+        [0, 1, 2],  # Top row
+        [3, 4, 5],  # Middle row
+        [6, 7, 8],  # Bottom row
+        [0, 3, 6],  # Left column
+        [1, 4, 7],  # Middle column
+        [2, 5, 8],  # Right column
+        [0, 4, 8],  # Diagonal
+        [2, 4, 6],  # Diagonal
+    ]
+    
+    # Check if any winning combination is satisfied
+    for combo in winning_combinations:
+        if all(board[i] == player for i in combo):
+            return True
+    return False
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000)
-
 
 
 
