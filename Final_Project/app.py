@@ -217,6 +217,9 @@ def tictacrooms():
             "current_turn" : session.get("user_id")
         }
 
+    elif request.method == "POST" and request.form.get("join"):
+
+        return redirect(f"/tictactoe?room={room['room_id']}")
 
         print(f"Room created: {new_room}")  # Debugging statement
         print(f"Current games: {games}")  # Debugging statement

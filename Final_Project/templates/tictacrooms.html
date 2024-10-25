@@ -25,7 +25,8 @@
               <tr>
                 <td> {{ room.room_id }}  </td>
                 <td> {{ room.username }} </td>
-                <td> <button type="button" class="btn btn-primary btn-sm"> Join </button> </td>
+                <td> <form action="/tictacrooms" method="POST">
+                  <input class="btn btn-primary" value="Create New Room" type="submit" name="create"> </form> </td>
               </tr>
                 {% endfor %}
             </tbody>
