@@ -275,7 +275,11 @@ def tictactoe():
         return "Room not found!", 404  # Return 404 if room ID is invalid
 
     if room_id not in games:
-        return "Room not found!", 404  # Return 404 if room ID does not exist
+        games[room_id] = {
+            'players': [],
+            'board': [None] * 9,  # Reset board
+            'current_turn': None   # Initialize current turn
+        }
 
     room_info = games[room_id]
     return render_template("tictactoe.html", room=room_info)  # Render game page
@@ -291,51 +295,54 @@ def on_join(data):
         if player_id not in game['players']:
             game['players'].append(player_id)
             join_room(room_id)  # Add user to room
-            socketio.emit('message', {'msg': f'Player {player_id} has joined room {room_id}'}, to=room_id)
+            emit('message', {'msg': f'Player {player_id} has joined room {room_id}'}, to=room_id)
             if len(game['players']) == 2:
-                socketio.emit('message', {'msg': 'Game is ready to start!'}, to=room_id)
+                game['current_turn'] = game['players'][0]  # Set the first player to start
+                emit('message', {'msg': 'Game is ready to start!'}, to=room_id)
         else:
-            socketio.emit('message', {'msg': 'You are already in this room!'}, room=request.sid)
+            emit('message', {'msg': 'You are already in this room!'}, room=request.sid)
     else:
-        socketio.emit('message', {'msg': 'Room is full or does not exist'}, room=request.sid)
+        emit('message', {'msg': 'Room is full or does not exist'}, room=request.sid)
 
 @socketio.on('cell_click')
 def handle_cell_click(data):
     room_id = data['roomId']
     cell_index = data['cell']
     current_class = data['currentClass']
-    player_id = session['user_id']  # Get current player ID
+    player_id = session['user_id']
     game = games.get(room_id)
 
-    # Debug: Log current turn and player trying to play
-    print(f"Current turn: {game['current_turn']}, Player trying to play: {player_id}")
+    print(f"Received cell_click event: Room: {room_id}, Cell: {cell_index}, Class: {current_class}, Player: {player_id}")
 
     if game:
-        if player_id == game['current_turn'] and game['board'][cell_index] is None:
-            game['board'][cell_index] = current_class  # Update the board with the current player's move
+        if player_id == game['current_turn']:
+            if game['board'][cell_index] is None:
+                game['board'][cell_index] = current_class  # Make the move
 
-            # Check for win or draw
-            if check_winner(game['board'], current_class):
-                emit('message', {'msg': f'Player {current_class} wins!'}, to=room_id)
-                emit('reset_board', to=room_id)  # Reset the board for the next game
-                return
-            elif all(cell is not None for cell in game['board']):  # Check for draw
-                emit('message', {'msg': 'It\'s a draw!'}, to=room_id)
-                emit('reset_board', to=room_id)  # Reset the board for the next game
-                return
+                print(f"Player {player_id} placed {current_class} in cell {cell_index}")
 
-            # Update the turn to the next player
-            next_player_index = (game['players'].index(player_id) + 1) % 2
-            game['current_turn'] = game['players'][next_player_index]  # Switch turn to the next player
-            
-            # Send updated game state
-            emit('update_board', {'cell': cell_index, 'currentClass': current_class}, to=room_id)
+                # Check for win or draw
+                if check_winner(game['board'], current_class):
+                    emit('message', {'msg': f'Player {current_class} wins!'}, to=room_id)
+                    emit('reset_board', to=room_id)
+                    return
+                elif all(cell is not None for cell in game['board']):  # Check for draw
+                    emit('message', {'msg': 'It\'s a draw!'}, to=room_id)
+                    emit('reset_board', to=room_id)
+                    return
+
+                # Update turn
+                next_player_index = (game['players'].index(player_id) + 1) % 2
+                game['current_turn'] = game['players'][next_player_index]
+
+                # Notify all clients to update their boards
+                emit('update_board', {'cell': cell_index, 'currentClass': current_class}, to=room_id)
+            else:
+                emit('message', {'msg': 'Cell already filled!'}, room=request.sid)
         else:
-            emit('message', {'msg': 'Not your turn or invalid move!'}, room=request.sid)
+            emit('message', {'msg': 'Not your turn!'}, room=request.sid)
     else:
         emit('message', {'msg': 'Game not found!'}, room=request.sid)
-
-
 
 @socketio.on('restart_game')
 def restart_game(data):
@@ -345,7 +352,6 @@ def restart_game(data):
         game['board'] = [None] * 9  # Reset the board
         game['current_turn'] = game['players'][0]  # Reset to the first player
         socketio.emit('reset_board', to=room_id)  # Notify clients to reset their boards
-
 
 def check_winner(board, player):
     # Define winning combinations
@@ -368,6 +374,7 @@ def check_winner(board, player):
 
 if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=5000)
+
 
 
 

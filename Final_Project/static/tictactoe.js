@@ -1,103 +1,99 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const cells = document.querySelectorAll("[data-cell]");
-  const winningMessageElement = document.getElementById("winningMessage");
-  const winningMessageTextElement = document.getElementById("winningMessageText");
-  const restartButton = document.getElementById("restartButton");
-  const roomId = "1"; // Replace with your room ID logic
-  let currentClass = "X"; // Assume player X starts
-  let gameActive = true;
+const cells = document.querySelectorAll('.cell');
+const winningMessageElement = document.querySelector('.winning-message');
+const winningMessageTextElement = document.querySelector('.winning-message-text');
+const restartButton = document.querySelector('.restart-button');
 
-  // Socket.io connection
-  const socket = io();
-  socket.on('connect', () => {
-      console.log('Connected to server');
-  });
+let currentClass = 'x'; // Start with 'X'
+let gameActive = true; // Game status
+let socket = io(); // Initialize Socket.IO client
+let roomId = prompt("Enter room ID:"); // Ask the user to enter a room ID
+let playerId = null; // Store player ID
 
-  // Handle cell click
-  cells.forEach(cell => {
-      cell.addEventListener("click", handleCellClick);
-  });
+// Join the game room
+socket.emit('join_game', { room: roomId });
 
-  function handleCellClick(e) {
-      const cell = e.target;
-      const cellIndex = Array.from(cells).indexOf(cell);
-
-      console.log("Cell clicked:", cellIndex); // Debug log for cell click
-
-      // Prevent click if game is not active or cell already filled
-      if (!gameActive || cell.classList.contains("X") || cell.classList.contains("O")) {
-          console.log("Cell is already occupied or game is not active."); // Debug log
-          return;
-      }
-
-      // Emit the move to the server
-      socket.emit('cell_click', {
-          roomId: roomId,
-          cell: cellIndex,
-          currentClass: currentClass,
-      });
-
-      // Place the mark locally
-      placeMark(cell, currentClass);
-      
-      // Check for winning message locally
-      if (checkWinCondition(currentClass)) {
-          gameActive = false;
-          winningMessageTextElement.textContent = `Player ${currentClass} wins!`;
-          winningMessageElement.classList.add("show");
-          return;
-      }
-
-      // Switch turn to the next player
-      switchTurn();
-  }
-
-  function placeMark(cell, currentClass) {
-      cell.classList.add(currentClass);
-  }
-
-  socket.on('update_board', data => {
-      const { cell, currentClass } = data;
-      const cellToUpdate = cells[cell];
-      placeMark(cellToUpdate, currentClass);
-      if (checkWinCondition(currentClass)) {
-          gameActive = false;
-          winningMessageTextElement.textContent = `Player ${currentClass} wins!`;
-          winningMessageElement.classList.add("show");
-      } else {
-          switchTurn(); // Switch turn after update
-      }
-  });
-
-  function checkWinCondition(player) {
-      const winPatterns = [
-          [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
-          [0, 3, 6], [1, 4, 7], [2, 5, 8], // Columns
-          [0, 4, 8], [2, 4, 6],             // Diagonals
-      ];
-      return winPatterns.some(pattern => {
-          return pattern.every(index => {
-              return cells[index].classList.contains(player);
-          });
-      });
-  }
-
-  // Handle game restart
-  restartButton.addEventListener("click", () => {
-      socket.emit('restart_game', { room: roomId });
-  });
-
-  // Reset board from the server
-  socket.on('reset_board', () => {
-      cells.forEach(cell => {
-          cell.classList.remove("X", "O"); // Clear cells
-      });
-      currentClass = "X"; // Reset to player X
-      gameActive = true;
-      winningMessageElement.classList.remove("show"); // Hide winning message
-  });
-
-  function switchTurn() {
-      currentClass = currentClass === "X" ? "O" : "X"; // Switch between X and O
-  }
+// Listen for messages from the server
+socket.on('message', (data) => {
+    console.log(data.msg);
+    if (data.msg.includes('wins')) {
+        winningMessageTextElement.textContent = data.msg;
+        winningMessageElement.classList.add('show');
+        gameActive = false; // End the game
+    }
 });
+
+// Listen for board updates
+socket.on('update_board', (data) => {
+    const cell = cells[data.cell];
+    placeMark(cell, data.currentClass);
+    currentClass = currentClass === 'x' ? 'circle' : 'x'; // Switch turn
+});
+
+// Listen for game reset requests
+socket.on('reset_board', () => {
+    resetBoard();
+});
+
+// Add event listeners to all cells
+cells.forEach((cell, index) => {
+    cell.addEventListener('click', () => handleCellClick(index));
+});
+
+// Handle click events on cells
+function handleCellClick(cellIndex) {
+    const cell = cells[cellIndex];
+
+    // Prevent click if game is not active or cell already has a mark
+    if (!gameActive || cell.classList.contains('x') || cell.classList.contains('circle')) {
+        return;
+    }
+
+    // Place the mark visually
+    placeMark(cell, currentClass);
+
+    // Send the cell click event to the server
+    socket.emit('cell_click', {
+        roomId: roomId,
+        cell: cellIndex,
+        currentClass: currentClass,
+    });
+
+    // Check for win condition
+    if (checkWinCondition(currentClass)) {
+        gameActive = false;
+        winningMessageTextElement.textContent = `Player ${currentClass.toUpperCase()} wins!`;
+        winningMessageElement.classList.add('show');
+        return;
+    }
+
+    // Switch turn
+    currentClass = currentClass === 'x' ? 'circle' : 'x';
+}
+
+// Function to visually place the mark
+function placeMark(cell, currentClass) {
+    cell.classList.add(currentClass); // Add class for 'x' or 'circle'
+}
+
+// Check win condition
+function checkWinCondition(currentClass) {
+    const winningCombinations = [
+        [0, 1, 2], // Top row
+        [3, 4, 5], // Middle row
+        [6, 7, 8], // Bottom row
+        [0, 3, 6], // Left column
+        [1, 4, 7], // Middle column
+        [2, 5, 8], // Right column
+        [0, 4, 8], // Diagonal
+        [2, 4, 6], // Diagonal
+    ];
+
+    return winningCombinations.some(combination => {
+        return combination.every(index => {
+            return cells[index].classList.contains(currentClass);
+        });
+    });
+}
+
+// Reset the board
+function reset
