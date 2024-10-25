@@ -149,11 +149,3 @@ body {
       padding-left: 20px; /* Add desired indentation */
     }
   }
-
-  .room-list {
-    margin-bottom: 20px;
-}
-
-.create-room {
-    margin-top: 20px;
-}

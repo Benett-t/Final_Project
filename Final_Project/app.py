@@ -18,9 +18,6 @@ rooms_boards = {}
 room_colors = {}
 board = chess.Board()
 
-tictac_rooms = {}
-tictac_games = {}
-
 # after closing website session deletes set to True if you want permament session.
 app.config["SESSION_PERMANENT"] = True
 # Save session in filesystem insted of browser
@@ -185,64 +182,11 @@ def logout():
 @app.route("/tictacrooms", methods=["GET", "POST"])
 @login_required
 def tictacrooms():
-    if request.method == "POST":
-        room_id = str(uuid4())
-        tictac_rooms[room_id] = {"players": {}, "board": [" "]*9, "turn": "X"}
-        return redirect(url_for("tictactoe", roomid=room_id))
-    
-    return render_template("tictacrooms.html", rooms=tictac_rooms)
     
 
-@app.route("/tictactoe/<roomid>", methods=["GET"])
+@app.route("/tictactoe", methods=["GET"])
 @login_required
-def tictactoe(roomid):
-    return render_template("tictactoe.html", roomid=roomid)
-
-@socketio.on('join_tictac')
-def on_join_tictac(data):
-    room_id = data['room']
-    username = session.get("username")
-    join_room(room_id)
-    emit('message', {'msg': f'{username} has entered the Tic Tac Toe room {room_id}.'}, room=room_id)
-
-@socketio.on('make_move')
-def handle_make_move(data):
-    room_id = data['room']
-    position = data['position']
-    username = session.get("username")
-
-    if room_id in tictac_rooms and position >= 0 and position < 9:
-        game = tictac_rooms[room_id]
-        current_turn = game["turn"]
-        board = game["board"]
-        
-        if board[position] == " ":
-            board[position] = current_turn
-            game["turn"] = "O" if current_turn == "X" else "X"
-            winner = check_winner(board)
-
-            emit('move_response', {'success': True, 'board': board, 'winner': winner}, room=room_id)
-            socketio.emit('update_board', {'board': board, 'winner': winner}, room=room_id)
-        else:
-            emit('move_response', {'success': False, 'error': 'Invalid move'}, room=room_id)
-    else:
-        emit('move_response', {'success': False, 'error': 'Room does not exist or invalid move'}, room=room_id)
-
-def check_winner(board):
-    winning_combinations = [
-        (0, 1, 2), (3, 4, 5), (6, 7, 8),  # horizontal
-        (0, 3, 6), (1, 4, 7), (2, 5, 8),  # vertical
-        (0, 4, 8), (2, 4, 6)              # diagonal
-    ]
-
-    for a, b, c in winning_combinations:
-        if board[a] == board[b] == board[c] != " ":
-            return board[a]  # Return the winner ('X' or 'O')
-    
-    if " " not in board:
-        return "Draw"
-    
-    return None  # No winner yet
+def tictactoe():
     
 
 @app.route("/chessboard/<roomid>")
