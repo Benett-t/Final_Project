@@ -1,4 +1,4 @@
-from flask import session, Flask, render_template, request, redirect, url_for, flash
+from flask import session, Flask, render_template, request, redirect, url_for
 from flask_session import Session
 from flask_socketio import SocketIO, emit, join_room, leave_room
 import sqlite3
@@ -6,8 +6,6 @@ import bcrypt
 from functools import wraps
 import chess
 from uuid import uuid4
-import random
-import time
 
 app = Flask(__name__)
 
