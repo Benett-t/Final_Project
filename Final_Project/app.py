@@ -17,7 +17,14 @@ rooms_boards = {}
 room_colors = {}
 board = chess.Board()
 
-games = {}
+tictac_game = {
+        'room_id' : 'None',
+        'current_turn' : 'None',
+        'player_1' : 'None',
+        'palyer_2' : 'None',
+        'private' : 'None',
+        'board_state' : [[None]*3]*3
+        }
 
 tictactoe_rooms = []
 # after closing website session deletes set to True if you want permament session.
@@ -251,109 +258,9 @@ def tictacrooms():
 @app.route("/tictactoe", methods=["GET", "POST"])
 @login_required
 def tictactoe():
-    room_id_str = request.args.get("room")
-    try:
-        room_id = int(room_id_str)
-    except (ValueError, TypeError):
-        return "Room not found!", 404
 
-    if room_id not in games:
-        games[room_id] = {
-            'players': [],
-            'board': [None] * 9,
-            'current_turn': None
-        }
-
-    room_info = games[room_id]
-    return render_template("tictactoe.html", room=room_info)
-
-@socketio.on('join_game')
-def on_join(data):
-    room_id = data['room']
-    player_id = session['user_id']
-    game = games.get(room_id)
-
-    if game and len(game['players']) < 2:
-        if player_id not in game['players']:
-            game['players'].append(player_id)
-            join_room(room_id)
-            emit('message', {'msg': f'Player {player_id} has joined room {room_id}'}, to=room_id)
-            if len(game['players']) == 2:
-                game['current_turn'] = game['players'][0]  # Set the first player to start
-                emit('message', {'msg': 'Game is ready to start!'}, to=room_id)
-        else:
-            emit('message', {'msg': 'You are already in this room!'}, room=request.sid)
-    else:
-        emit('message', {'msg': 'Room is full or does not exist'}, room=request.sid)
-
-@socketio.on('cell_click')
-def handle_cell_click(data):
-    room_id = data['roomId']
-    cell_index = data['cell']
-    current_class = data['currentClass']
-    player_id = session['user_id']
-    game = games.get(room_id)
-
-    if game:
-    # Check if it's the current player's turn
-        if player_id == game['current_turn']:
-            if game['board'][cell_index] is None:
-                game['board'][cell_index] = current_class  # Make the move
-
-                # Check for win or draw
-                if check_winner(game['board'], current_class):
-                    emit('message', {'msg': f'Player {current_class} wins!'}, to=room_id)
-                    emit('reset_board', to=room_id)
-                    return
-                elif all(cell is not None for cell in game['board']):  # Check for draw
-                    emit('message', {'msg': 'It\'s a draw!'}, to=room_id)
-                    emit('reset_board', to=room_id)
-                    return
-
-                # Update turn to the next player
-                next_player_index = (game['players'].index(player_id) + 1) % 2
-                game['current_turn'] = game['players'][next_player_index]
-
-                # Notify all clients to update their boards
-                emit('update_board', {'cell': cell_index, 'currentClass': current_class}, to=room_id)
-            else:
-                emit('message', {'msg': 'Cell already filled!'}, room=request.sid)
-        else:
-            emit('message', {'msg': 'Not your turn!'}, room=request.sid)
-    else:
-        emit('message', {'msg': 'Game not found!'}, room=request.sid)
-
-@socketio.on('restart_game')
-def restart_game(data):
-    room_id = data['room']
-    game = games.get(room_id)
-    if game:
-        game['board'] = [None] * 9
-        game['current_turn'] = game['players'][0]
-        socketio.emit('reset_board', to=room_id)
-
-def check_winner(board, player):
-    winning_combinations = [
-        [0, 1, 2],  # Top row
-        [3, 4, 5],  # Middle row
-        [6, 7, 8],  # Bottom row
-        [0, 3, 6],  # Left column
-        [1, 4, 7],  # Middle column
-        [2, 5, 8],  # Right column
-        [0, 4, 8],  # Diagonal
-        [2, 4, 6],  # Diagonal
-    ]
+    global tictactoe_rooms
     
-    for combo in winning_combinations:
-        if all(board[i] == player for i in combo):
-            return True
-    return False
-
-if __name__ == '__main__': 
-    socketio.run(app, host='0.0.0.0', port=5000)
-
-
-
 
 @app.route("/chessboard/<roomid>")
 @login_required

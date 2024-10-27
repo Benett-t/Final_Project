@@ -6,7 +6,7 @@ game = {
     'player_1' : 'None',
     'palyer_2' : 'None',
     'private' : 'None',
-    'board_state' : [None] * 9
+    'board_state' : [[' ']*3]*3
     }
 
 board = [
@@ -14,6 +14,25 @@ board = [
     [' ',' ',' '],
     [' ',' ',' ']
 ]
+
+turn = 'X'
+
+def move():
+
+    global turn
+
+    H = int(input(f"Horizontal coordinate for {turn}: "))
+    V = int(input(f"Vertical cooordinate for {turn}: "))
+
+    if board[V][H] == ' ':
+        board[V][H] = turn
+        if turn == 'X':
+            turn = 'O'
+        else:
+            turn = 'X'
+
+    else:
+        print("Invalid move")
 
 def check_win(board):
 
@@ -50,12 +69,19 @@ def check_tie(board):
         
     return True
 
-winner = check_win(board)
-if winner:
-    print(f"The winner is {winner}!")
-elif check_tie(board):
-    print("The game is a tie!")
+while check_win(board) is None and check_tie(board) is False:
+    print("    0    1    2")
+    print(f" 0{board[0]}\n\n 1{board[1]}\n\n 2{board[2]}\n")
+    print(game['board_state'])
+    move()
 else:
-    print("No winner or tie yet.")
+    winner = check_win(board)
+    if winner:
+        print(f"The winner is {winner}!")
+        print("    0    1    2")
+        print(f" 0{board[0]}\n\n 1{board[1]}\n\n 2{board[2]}\n")
+    elif check_tie(board):
+        print("The game is a tie!")
+        print("    0    1    2")
+        print(f" 0{board[0]}\n\n 1{board[1]}\n\n 2{board[2]}\n")
 
-    
