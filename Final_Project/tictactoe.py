@@ -89,3 +89,6 @@ else:
         print("    0    1    2")
         print(f" 0{board[0]}\n\n 1{board[1]}\n\n 2{board[2]}\n")
 
+class Board:
+    def __init__(self) -> None:
+        pass
