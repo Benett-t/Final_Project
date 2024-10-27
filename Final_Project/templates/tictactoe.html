@@ -9,6 +9,7 @@
 {% block main %}
     <h1>Play Tic Tac Toe</h1>
     <div id="room-info" data-room-id="{{ room['room_id'] }}"></div>
+    <p id="turn">Current turn</p>
     <div class="board" id="board">
            <div class="cell" data-cell></div>
            <div class="cell" data-cell></div>
@@ -19,10 +20,6 @@
            <div class="cell" data-cell></div>
            <div class="cell" data-cell></div>
            <div class="cell" data-cell></div>
-       </div>
-       <div class="winning-message" id="winningMessage">
-           <div id="winningMessageText"></div>
-           <button id="restartButton">Restart</button>
        </div>
 
        <script src="/static/tictactoe.js"></script>

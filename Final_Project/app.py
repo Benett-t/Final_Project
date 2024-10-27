@@ -26,7 +26,9 @@ tictac_game = {
         'board_state' : [[None]*3]*3
         }
 
-tictactoe_rooms = []
+tictactoe_games = []
+
+room=1
 # after closing website session deletes set to True if you want permament session.
 app.config["SESSION_PERMANENT"] = True
 # Save session in filesystem insted of browser
@@ -199,69 +201,110 @@ def logout():
 def tictacrooms():
     global tictactoe_rooms, games
 
-    if request.method == "POST":
-        if request.form.get("create"):
-            existing_room = next((room for room in tictactoe_rooms if room["user_id"] == session.get("user_id")), None)
-            if existing_room:
-                return redirect(f"/tictactoe?room={existing_room['room_id']}")
+    
 
-            room_id = random.randint(10000, 99999)
-            while room_id in games:
-                room_id = random.randint(10000, 99999)
+    return render_template("tictacrooms.html", room=1)
 
-            new_room = {
-                "room_id": room_id,
-                "user_id": session.get("user_id"),
-                "username": session.get("username"),
-                "players": 1
-            }
-            tictactoe_rooms.append(new_room)
-
-            games[room_id] = {
-                "players": [session.get("user_id")],
-                "board": [None] * 9,
-                "current_turn": session.get("user_id")
-            }
-
-            return redirect(f"/tictactoe?room={room_id}")
-
-        elif request.form.get("join"):
-            room_id = request.form.get("room_id")
-            if not room_id:
-                flash('Room ID is required', 'error')
-                return redirect('/tictacrooms')
-
-            try:
-                room_id = int(room_id)
-            except ValueError:
-                flash('Invalid room ID', 'error')
-                return redirect('/tictacrooms')
-
-            room = next((r for r in tictactoe_rooms if r["room_id"] == room_id), None)
-
-            if room:
-                if room_id in games:
-                    if len(games[room_id]["players"]) < 2:
-                        games[room_id]["players"].append(session.get("user_id"))
-                        return redirect(f"/tictactoe?room={room_id}")
-                    else:
-                        flash('Room is full', 'error')
-                else:
-                    flash('Game does not exist', 'error')
-            else:
-                flash('Room does not exist', 'error')
-
-            return redirect('/tictacrooms')
-
-    return render_template("tictacrooms.html", rooms=tictactoe_rooms)
-
-@app.route("/tictactoe", methods=["GET", "POST"])
+@app.route("/tictactoe/<room>")
 @login_required
-def tictactoe():
+def tictactoe(room):
 
-    global tictactoe_rooms
+#Original game without SpcketIO TODO: SocketIO implementation
+    global tictactoe_games
+
+    game = {
+        'room_id' : 1,
+        'current_turn' : 'X',
+        'player_1' : 'None',
+        'palyer_2' : 'None',
+        'private' : 'None',
+        'board_state' : [[' ']*3]*3
+        }
     
+    tictactoe_games.append(game)
+
+    board = [
+        [' ',' ',' '],
+        [' ',' ',' '],
+        [' ',' ',' ']
+    ]
     
+    return render_template("tictactoe.html", room=room)
+
+@socketio.on('move')
+@login_required
+def tictac_move(data):
+    H = data['H']
+    V = data['V']
+
+    turn = tictactoe_games[1]['current-turn']
+    socketio.emit('turn', {'turn': turn}, room=room)
+
+    def move(H, V):
+        try:
+            if board[V][H] == ' ':
+                board[V][H] = turn
+                if turn == 'X':
+                    turn = 'O'
+                else:
+                    turn = 'X'
+
+            else:
+                print("Invalid move")
+        except IndexError:
+            print("Move is out of range")
+
+
+    def check_win(board):
+
+        #check each row
+
+        for row in board:
+            if row[0] == row[1] == row[2] and row[0] != ' ':
+                return row[0]
+            
+        #check each column
+
+        for col in range(3):
+            if board[0][col] == board[1][col] == board[2][col] and board[0][col] != ' ':
+                return board[0][col]
+            
+        # check diagonal
+
+        if board[0][0] == board[1][1] == board[2][2] and board[0][0] != ' ':
+            return board[0][0]
+        if board[0][2] == board[1][1] == board[2][0] and board[0][2] != ' ':
+            return board[0][2]
+        
+        return None
+
+    def check_tie(board):
+        # Check if there's a winner
+        if check_win(board) is not None:
+            return False
+        
+        # Check if all cells are filled
+        for row in board:
+            if ' ' in row: 
+                return False
+            
+        return True
+
+    while check_win(board) is None and check_tie(board) is False:
+        print("    0    1    2")
+        print(f" 0{board[0]}\n\n 1{board[1]}\n\n 2{board[2]}\n")
+        move()
+    else:
+        winner = check_win(board)
+        if winner:
+            print(f"The winner is {winner}!")
+            print("    0    1    2")
+            print(f" 0{board[0]}\n\n 1{board[1]}\n\n 2{board[2]}\n")
+        elif check_tie(board):
+            print("The game is a tie!")
+            print("    0    1    2")
+            print(f" 0{board[0]}\n\n 1{board[1]}\n\n 2{board[2]}\n")
+
 
 @app.route("/chessboard/<roomid>")
 @login_required
