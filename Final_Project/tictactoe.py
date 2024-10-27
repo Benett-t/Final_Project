@@ -22,17 +22,22 @@ def move():
     global turn
 
     H = int(input(f"Horizontal coordinate for {turn}: "))
+
     V = int(input(f"Vertical cooordinate for {turn}: "))
 
-    if board[V][H] == ' ':
-        board[V][H] = turn
-        if turn == 'X':
-            turn = 'O'
-        else:
-            turn = 'X'
+    try:
+        if board[V][H] == ' ':
+            board[V][H] = turn
+            if turn == 'X':
+                turn = 'O'
+            else:
+                turn = 'X'
 
-    else:
-        print("Invalid move")
+        else:
+            print("Invalid move")
+    except IndexError:
+        print("Move is out of range")
+
 
 def check_win(board):
 
@@ -72,7 +77,6 @@ def check_tie(board):
 while check_win(board) is None and check_tie(board) is False:
     print("    0    1    2")
     print(f" 0{board[0]}\n\n 1{board[1]}\n\n 2{board[2]}\n")
-    print(game['board_state'])
     move()
 else:
     winner = check_win(board)
