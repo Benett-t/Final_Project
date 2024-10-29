@@ -19,13 +19,13 @@
               </tr>
             </thead>
             <tbody>
-                {% for room in rooms %}
+              {% for room_id, game in tictactoe_games.items() %}
                   <tr>
-                    <td>{{ room.room_id }}</td>
-                    <td>{{ room.username }}</td>
+                    <td>{{ room_id }}</td>
+                    <td>{{ game.player_1 }}</td>
                     <td>
                       <form action="/tictacrooms" method="POST" style="display:inline;">
-                          <input type="hidden" name="room_id" value="{{ room.room_id }}">
+                          <input type="hidden" name="room_id" value="{{ room_id }}">
                           <input class="btn btn-primary" value="Join Room" type="submit" name="join">
                       </form>
                     </td>
@@ -39,14 +39,5 @@
              <input class="btn btn-primary" value="Create New Room" type="submit" name="create">
         </form>
     </div>
-
-    {% with messages = get_flashed_messages() %}
-      {% if messages %}
-        <ul class="flashes">
-          {% for message in messages %}
-            <li>{{ message }}</li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-    {% endwith %}
-{% endblock %}
+  
+    {% endblock %}

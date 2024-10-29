@@ -6,6 +6,7 @@ import bcrypt
 from functools import wraps
 import chess
 from uuid import uuid4
+import random
 
 app = Flask(__name__)
 
@@ -24,9 +25,8 @@ tictac_game = {
         'board_state' : [[None]*3]*3
         }
 
-tictactoe_games = []
+tictactoe_games = {}
 
-room=1
 # after closing website session deletes set to True if you want permament session.
 app.config["SESSION_PERMANENT"] = True
 # Save session in filesystem insted of browser
@@ -185,23 +185,46 @@ def register():
 @login_required
 def logout():
 
-    global tictacrooms
-
-    for i in range(len(tictactoe_rooms) - 1, -1, -1):  # Iterate in reverse to avoid skipping elements
-        if tictactoe_rooms[i]["user_id"] == session.get("user_id"):
-            del tictactoe_rooms[i]
-
     session.clear()
     return redirect("/login")
 
 @app.route("/tictacrooms", methods=["GET", "POST"])
 @login_required
 def tictacrooms():
-    global tictactoe_rooms, games
+    global tictactoe_games
 
-    
+    if request.method == 'POST' and request.form.get("create"):
 
-    return render_template("tictacrooms.html", room=1)
+        #to esnure unique ID
+        room_id = random.randint(10000, 99999)
+        while room_id in tictactoe_games:
+            room_id = random.randint(10000, 99999)
+
+        username = session.get("username")
+
+        tictactoe_games[room_id] = {
+            'room_id' : room_id,
+            'current_turn' : 'X',
+            'player_1' : username,
+            'palyer_2' : 'None',
+            'private' : 'False',
+            'board_state' : [[' ']*3]*3
+        }
+
+        return redirect(url_for('tictactoe', room=room_id))
+
+    elif request.method == 'POST' and request.form.get("join"):
+
+        username = session.get("username")
+
+        room_id = int(request.form.get("room_id"))
+
+        tictactoe_games[room_id]['player_2'] = username
+
+        return redirect(url_for('tictactoe', room=room_id))
+
+
+    return render_template("tictacrooms.html", tictactoe_games=tictactoe_games)
 
 @app.route("/tictactoe/<room>")
 @login_required
@@ -210,47 +233,37 @@ def tictactoe(room):
 #Original game without SpcketIO TODO: SocketIO implementation
     global tictactoe_games
 
-    game = {
-        'room_id' : 1,
-        'current_turn' : 'X',
-        'player_1' : 'None',
-        'palyer_2' : 'None',
-        'private' : 'None',
-        'board_state' : [[' ']*3]*3
-        }
-    
-    tictactoe_games.append(game)
+    if int(room) not in tictactoe_games:
+        return "Room not found.", 404
 
-    board = [
-        [' ',' ',' '],
-        [' ',' ',' '],
-        [' ',' ',' ']
-    ]
-    
     return render_template("tictactoe.html", room=room)
 
 @socketio.on('move')
 @login_required
 def tictac_move(data):
+    room_id = data['room_id']
     H = data['H']
     V = data['V']
 
-    turn = tictactoe_games[1]['current-turn']
-    socketio.emit('turn', {'turn': turn}, room=room)
+    if room_id in tictactoe_games:
+        game = tictactoe_games[room_id]
+        board = game['board_state']
+        current_turn = game['current_turn']
 
-    def move(H, V):
-        try:
-            if board[V][H] == ' ':
-                board[V][H] = turn
-                if turn == 'X':
-                    turn = 'O'
-                else:
-                    turn = 'X'
+        if board[V][H] == ' ':
+                board[V][H] = current_turn
+                game['current_turn'] = 'O' if current_turn == 'X' else 'X'  # Switch turns
+                
+                # Emit the updated board and turn to all clients in the room
+                emit('board_update', {'board': board, 'current_turn': game['current_turn']}, room=room_id)
 
-            else:
-                print("Invalid move")
-        except IndexError:
-            print("Move is out of range")
+                # Check for a win or tie
+                if check_win(board):
+                    emit('game_over', {'winner': current_turn}, room=room_id)
+                elif check_tie(board):
+                    emit('game_over', {'winner': None}, room=room_id)
+        else:
+            emit('invalid_move', {'message': 'Invalid move! Cell already taken.'}, room=request.sid)
 
 
     def check_win(board):
@@ -287,21 +300,6 @@ def tictac_move(data):
                 return False
             
         return True
-
-    while check_win(board) is None and check_tie(board) is False:
-        print("    0    1    2")
-        print(f" 0{board[0]}\n\n 1{board[1]}\n\n 2{board[2]}\n")
-        move()
-    else:
-        winner = check_win(board)
-        if winner:
-            print(f"The winner is {winner}!")
-            print("    0    1    2")
-            print(f" 0{board[0]}\n\n 1{board[1]}\n\n 2{board[2]}\n")
-        elif check_tie(board):
-            print("The game is a tie!")
-            print("    0    1    2")
-            print(f" 0{board[0]}\n\n 1{board[1]}\n\n 2{board[2]}\n")
 
 
 @app.route("/chessboard/<roomid>")
