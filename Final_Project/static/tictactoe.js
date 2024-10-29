@@ -1,80 +1,66 @@
-const socket = io();
+// Establish connection to the server using Socket.IO
+const socket = io.connect();
 
-// Get references to HTML elements
-const board = document.getElementById('board');
-const cells = document.querySelectorAll('[data-cell]');
-const turnDisplay = document.getElementById('turn');
-const winningMessage = document.querySelector('.winning-message');
-const winningText = document.getElementById('winning-text');
-const restartButton = document.getElementById('restart-button');
-
-// Set the current player
-let currentPlayer = 'X';
+// Get the room ID from the HTML data attribute
 const roomId = document.getElementById('room-info').dataset.roomId;
 
-// Event listeners for cell clicks
-cells.forEach(cell => {
-    cell.addEventListener('click', () => handleCellClick(cell));
-});
-
-// Handle cell click
-function handleCellClick(cell) {
-    const cellIndex = Array.from(cells).indexOf(cell);
-    const row = Math.floor(cellIndex / 3);
-    const col = cellIndex % 3;
-
-    // Emit move to the server
-    socket.emit('move', { room_id: roomId, H: col, V: row });
-}
+// Join the room
+socket.emit('join_room', { room_id: roomId });
 
 // Listen for board updates from the server
-socket.on('board_update', data => {
-    const { board, current_turn } = data;
-    updateBoard(board);
-    currentPlayer = current_turn;
-    turnDisplay.innerText = `Current turn: ${currentPlayer}`;
+socket.on('board_update', (data) => {
+    console.log("Board update received:", data);  // Debug log to track incoming board updates
+    updateBoard(data.board, data.current_turn);   // Update board UI with latest data
 });
 
-// Update the board UI
-function updateBoard(board) {
+// Listen for game over events
+socket.on('game_over', (data) => {
+    console.log("Game over event received:", data);  // Debug log for game over events
+    const winningText = document.getElementById('winning-text');
+    if (data.winner) {
+        winningText.textContent = `Winner: ${data.winner}`;
+    } else {
+        winningText.textContent = "It's a tie!";
+    }
+    document.querySelector('.winning-message').classList.add('show');
+});
+
+// Listen for invalid move events
+socket.on('invalid_move', (data) => {
+    console.log("Invalid move:", data.message);  // Log invalid move message
+    alert(data.message);  // Show an alert for invalid moves
+});
+
+// Function to update the board UI based on the server's board data
+function updateBoard(board, currentTurn) {
+    // Update each cell with the current board state
     board.forEach((row, rowIndex) => {
-        row.forEach((cell, colIndex) => {
-            const cellElement = cells[rowIndex * 3 + colIndex];
-            cellElement.classList.remove('x', 'circle');
-            if (cell === 'X') {
-                cellElement.classList.add('x');
-            } else if (cell === 'O') {
-                cellElement.classList.add('circle');
-            }
+        row.forEach((cellValue, colIndex) => {
+            const cell = document.querySelector(`.cell[data-row="${rowIndex}"][data-col="${colIndex}"]`);
+            if (cell) cell.textContent = cellValue;  // Set the cell's content to 'X', 'O', or ' '
         });
     });
+    // Update the turn display
+    document.getElementById('turn').textContent = `Current turn: ${currentTurn}`;
 }
 
-// Listen for game over event
-socket.on('game_over', data => {
-    const winner = data.winner;
-    if (winner) {
-        winningText.innerText = `The winner is ${winner}!`;
-    } else {
-        winningText.innerText = "It's a tie!";
-    }
-    winningMessage.classList.add('show');
-});
+// Handle cell clicks and send move to the server
+document.querySelectorAll('.cell').forEach((cell, index) => {
+    // Set row and column data attributes for each cell
+    const row = Math.floor(index / 3);
+    const col = index % 3;
+    cell.setAttribute("data-row", row);
+    cell.setAttribute("data-col", col);
 
-// Restart the game
-restartButton.addEventListener('click', () => {
-    winningMessage.classList.remove('show');
-    resetBoard();
-});
-
-// Reset the board for a new game
-function resetBoard() {
-    cells.forEach(cell => {
-        cell.classList.remove('x', 'circle');
+    cell.addEventListener('click', () => {
+        console.log(`Move made at row ${row}, column ${col}`);  // Debug log for move
+        socket.emit('move', { room_id: roomId, V: row, H: col });
     });
-    currentPlayer = 'X'; // Reset to player X
-    turnDisplay.innerText = `Current turn: ${currentPlayer}`;
-    
-    // Optionally, emit a reset event to the server or reset the game state on the server
-    socket.emit('reset_game', { room_id: roomId });
-}
+});
+
+// Restart the game when the restart button is clicked
+document.getElementById('restart-button').addEventListener('click', () => {
+    console.log("Restart game clicked");  // Debug log for restart
+    socket.emit('restart_game', { room_id: roomId });  // Emit a restart request to the server
+    document.querySelector('.winning-message').classList.remove('show');  // Hide the winning message
+});

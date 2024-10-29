@@ -206,9 +206,13 @@ def tictacrooms():
             'room_id' : room_id,
             'current_turn' : 'X',
             'player_1' : username,
-            'palyer_2' : 'None',
+            'player_2' : 'None',
             'private' : 'False',
-            'board_state' : [[' ']*3]*3
+            'board_state' : [
+                                [' ',' ',' '],
+                                [' ',' ',' '],
+                                [' ',' ',' ']
+                            ]
         }
 
         return redirect(url_for('tictactoe', room=room_id))
@@ -235,36 +239,30 @@ def tictactoe(room):
 
     if int(room) not in tictactoe_games:
         return "Room not found.", 404
-
+    
     return render_template("tictactoe.html", room=room)
+
+@socketio.on('join_room')
+@login_required
+def handle_join_room(room_id):
+    # Check if room_id is actually a string or integer, not a dictionary
+    if isinstance(room_id, dict):
+        room_id = room_id.get('room_id')  # Extract the actual room ID if wrapped in a dictionary
+    
+    # Join the room and emit the current game state to the client
+    join_room(str(room_id))  # Ensure room_id is a string for consistency with SocketIO
+    print(f"User joined room {room_id}")
+
+    # Retrieve the game state and emit it to the client
+    game = tictactoe_games.get(int(room_id))
+    if game:
+        emit('board_update', {'board': game['board_state'], 'current_turn': game['current_turn']}, room=str(room_id))
+    else:
+        print(f"Room {room_id} does not exist.")
 
 @socketio.on('move')
 @login_required
 def tictac_move(data):
-    room_id = data['room_id']
-    H = data['H']
-    V = data['V']
-
-    if room_id in tictactoe_games:
-        game = tictactoe_games[room_id]
-        board = game['board_state']
-        current_turn = game['current_turn']
-
-        if board[V][H] == ' ':
-                board[V][H] = current_turn
-                game['current_turn'] = 'O' if current_turn == 'X' else 'X'  # Switch turns
-                
-                # Emit the updated board and turn to all clients in the room
-                emit('board_update', {'board': board, 'current_turn': game['current_turn']}, room=room_id)
-
-                # Check for a win or tie
-                if check_win(board):
-                    emit('game_over', {'winner': current_turn}, room=room_id)
-                elif check_tie(board):
-                    emit('game_over', {'winner': None}, room=room_id)
-        else:
-            emit('invalid_move', {'message': 'Invalid move! Cell already taken.'}, room=request.sid)
-
 
     def check_win(board):
 
@@ -272,20 +270,20 @@ def tictac_move(data):
 
         for row in board:
             if row[0] == row[1] == row[2] and row[0] != ' ':
-                return row[0]
+                return True
             
         #check each column
 
         for col in range(3):
             if board[0][col] == board[1][col] == board[2][col] and board[0][col] != ' ':
-                return board[0][col]
+                return True
             
         # check diagonal
 
         if board[0][0] == board[1][1] == board[2][2] and board[0][0] != ' ':
-            return board[0][0]
+            return True
         if board[0][2] == board[1][1] == board[2][0] and board[0][2] != ' ':
-            return board[0][2]
+            return True
         
         return None
 
@@ -300,6 +298,36 @@ def tictac_move(data):
                 return False
             
         return True
+
+    room_id = int(data['room_id'])
+    H = data['H']
+    V = data['V']
+    
+    if room_id in tictactoe_games:
+        game = tictactoe_games[room_id]
+        board = game['board_state']
+        current_turn = game['current_turn']
+
+        if board[V][H] == ' ':
+            # Update board with the player's move
+            board[V][H] = current_turn
+            game['current_turn'] = 'O' if current_turn == 'X' else 'X'  # Switch turns
+
+            # Emit the updated board and turn to all clients in the room
+            socketio.emit('board_update', {'board': board, 'current_turn': game['current_turn']}, room=room_id)
+            print(f"Board update emitted to room {room_id} with turn {game['current_turn']} and board:")
+            print(board)  # Debug print to confirm board state
+
+            # Check for a win or tie
+            if check_win(board):
+                socketio.emit('game_over', {'winner': current_turn}, room=room_id)
+            elif check_tie(board):
+                socketio.emit('game_over', {'winner': None}, room=room_id)
+        else:
+            socketio.emit('invalid_move', {'message': 'Invalid move! Cell already taken.'}, room=request.sid)
+
+    print(tictactoe_games[room_id])  # Print entire game state for debugging
+
 
 
 @app.route("/chessboard/<roomid>")

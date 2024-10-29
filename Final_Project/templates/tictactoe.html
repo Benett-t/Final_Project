@@ -11,22 +11,17 @@
     <div id="room-info" data-room-id="{{ room }}"></div>
     <p id="turn">Current turn: X</p>
     <div class="board" id="board">
-           <div class="cell" data-cell></div>
-           <div class="cell" data-cell></div>
-           <div class="cell" data-cell></div>
-           <div class="cell" data-cell></div>
-           <div class="cell" data-cell></div>
-           <div class="cell" data-cell></div>
-           <div class="cell" data-cell></div>
-           <div class="cell" data-cell></div>
-           <div class="cell" data-cell></div>
-       </div>
+        <!-- Define each cell with its row and column position -->
+        {% for i in range(3) %}
+            {% for j in range(3) %}
+                <div class="cell" data-cell data-row="{{ i }}" data-col="{{ j }}"></div>
+            {% endfor %}
+        {% endfor %}
+    </div>
 
        <div class="winning-message">
         <div id="winning-text"></div>
         <button id="restart-button">Restart</button>
     </div>
-
-    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
        <script src="/static/tictactoe.js"></script>
 {% endblock %}
