@@ -33,11 +33,14 @@ socket.on('invalid_move', (data) => {
 
 // Function to update the board UI based on the server's board data
 function updateBoard(board, currentTurn) {
-    // Update each cell with the current board state
+    console.log("Updating board with:", board, "Current turn:", currentTurn); // Debugging line
     board.forEach((row, rowIndex) => {
         row.forEach((cellValue, colIndex) => {
             const cell = document.querySelector(`.cell[data-row="${rowIndex}"][data-col="${colIndex}"]`);
-            if (cell) cell.textContent = cellValue;  // Set the cell's content to 'X', 'O', or ' '
+            if (cell) {
+                cell.textContent = cellValue;  // Update the cell with 'X' or 'O'
+                console.log(`Updated cell [${rowIndex}][${colIndex}] to: ${cellValue}`); // Debugging line
+            }
         });
     });
     // Update the turn display

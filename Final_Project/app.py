@@ -302,7 +302,7 @@ def tictac_move(data):
     room_id = int(data['room_id'])
     H = data['H']
     V = data['V']
-    
+
     if room_id in tictactoe_games:
         game = tictactoe_games[room_id]
         board = game['board_state']
@@ -314,15 +314,15 @@ def tictac_move(data):
             game['current_turn'] = 'O' if current_turn == 'X' else 'X'  # Switch turns
 
             # Emit the updated board and turn to all clients in the room
-            socketio.emit('board_update', {'board': board, 'current_turn': game['current_turn']}, room=room_id)
+            socketio.emit('board_update', {'board': board, 'current_turn': game['current_turn']}, room=str(room_id))
             print(f"Board update emitted to room {room_id} with turn {game['current_turn']} and board:")
             print(board)  # Debug print to confirm board state
 
             # Check for a win or tie
             if check_win(board):
-                socketio.emit('game_over', {'winner': current_turn}, room=room_id)
+                socketio.emit('game_over', {'winner': current_turn}, room=str(room_id))
             elif check_tie(board):
-                socketio.emit('game_over', {'winner': None}, room=room_id)
+                socketio.emit('game_over', {'winner': None}, room=str(room_id))
         else:
             socketio.emit('invalid_move', {'message': 'Invalid move! Cell already taken.'}, room=request.sid)
 
