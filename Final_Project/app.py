@@ -63,13 +63,15 @@ def index():
     #Landing page after login
     if session["username"] == None:
         return redirect("/login")
+    else:
+        username = session["username"]
     db = sqlite3.connect("users.db")
     cursor = db.cursor()
     try:
-        cursor.execute("SELECT wins, loss FROM chess WHERE username = ?", (session["username"],))
+        cursor.execute("SELECT wins, loss FROM chess WHERE username = ?", (username,))
         chesst = cursor.fetchone()
 
-        cursor.execute("SELECT wins, loss FROM tictactoe WHERE username = ?", (session["username"],))
+        cursor.execute("SELECT wins, loss FROM tictactoe WHERE username = ?", (username,))
         tictactoet = cursor.fetchone()
         
     except ValueError:
@@ -88,7 +90,7 @@ def index():
     chess_losses = chesst[1]     
     tictac_wins = tictactoet[0]      
     tictac_losses = tictactoet[1]     
-    return render_template("index.html", chess_wins=chess_wins, chess_losses=chess_losses, tictac_wins=tictac_wins, tictac_losses=tictac_losses)
+    return render_template("index.html", chess_wins=chess_wins, chess_losses=chess_losses, tictac_wins=tictac_wins, tictac_losses=tictac_losses, username=username)
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
