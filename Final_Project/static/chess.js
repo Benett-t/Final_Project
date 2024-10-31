@@ -590,6 +590,19 @@ socket.on('draw_noti', function(data) {
     asd = 0;
 });
 
+socket.on('draw_accepted', function(data) {
+    matesound.currentTime = 0;
+    matesound.play()
+    var drawModal = new bootstrap.Modal(document.getElementById('drawacModal'));
+    drawModal.show();
+})
+document.getElementById('Accept').addEventListener('click', function() {
+    socket.emit('draw_accept', { roomid: roomid });
+    $('#drawModal').modal('hide'); // Close the modal
+});
+document.getElementById('Deny').addEventListener('click', function() {
+    $('#drawModal').modal('hide'); // Close the modal
+});
 // Handle the Draw confirmation
 document.getElementById('confirmDraw').addEventListener('click', function() {
     asd = 1;

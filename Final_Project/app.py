@@ -697,8 +697,14 @@ def on_disconnect():
 def draw_request(data):
     roomid = data["roomid"]
     socketio.emit('draw_noti', {'message': 'Your opponent has requested a draw.'}, room=roomid)
-    
+
 @socketio.on('forfeit')
 def forfeite_chess(data):
     roomid = data["roomid"]
     forfeit_chess(roomid=roomid, username=session.get("username"))
+
+@socketio.on('draw_accept')
+def draw_chess(data):
+    roomid = data["roomid"]
+    rooms_boards[roomid].reset()
+    socketio.emit('draw_accepted', {'message': 'Game drawn.'}, room=roomid)
