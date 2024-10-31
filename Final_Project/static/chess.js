@@ -10,6 +10,8 @@ const capturesound = new Audio('/static/sounds/capture.wav');
 const errorsound = new Audio('/static/sounds/invalid.wav');
 
 const boardElement = document.getElementById('chessboard');
+let disconnectCountdown;
+let countdownTime = 60;  // 1 minute
 let selectedSquare = null;
 let selectedPiece = null;
 let selectedSquareData = null;
@@ -33,6 +35,11 @@ function mirrorFEN(fen) {
     return mirroredRanks.join('/');
 }
 
+
+socket.on('connect', () => {
+    // Emit a custom event to the server indicating that the player has reconnected
+    socket.emit('player_reconnected', { roomid: roomid });
+});
 
 // Render the board based on the FEN string
 function renderBoard(fen) {
@@ -540,7 +547,35 @@ function updateBoard(move, is_checkmate, white, black, wpromotion, bpromotion, s
     }
 }
 
+socket.on('opponent_disconnected', function(data) {
+    // Display the timer next to the opponent's name
+    let timerElement = document.getElementById('opponent-timer');
+    timerElement.innerHTML = "Opponent disconnected. Forfeit in: " + countdownTime + " seconds";
+    
+    // Start the countdown
+    disconnectCountdown = setInterval(function() {
+        countdownTime -= 1;
+        timerElement.innerHTML = "Opponent disconnected. Forfeit in: " + countdownTime + " seconds";
+        
+        if (countdownTime <= 0) {
+            clearInterval(disconnectCountdown);
+        }
+    }, 1000);
+});
 
+// Listen for opponent reconnection
+socket.on('opponent_reconnected', function(data) {
+    // Clear the countdown if opponent reconnects
+    clearInterval(disconnectCountdown);
+    document.getElementById('opponent-timer').innerHTML = '';
+    countdownTime = 60;  // Reset timer
+});
+
+// Listen for opponent forfeiture
+socket.on('player_forfeit', function(data) {
+    clearInterval(disconnectCountdown);
+    document.getElementById('opponent-timer').innerHTML = 'Opponent forfeited.';
+});
 // Initial board render
 $(document).ready(function() {
     renderBoard(boardFen);  // boardFen will be passed from the server-side

@@ -7,11 +7,12 @@ from functools import wraps
 import chess
 from uuid import uuid4
 import random
+import threading
 
 app = Flask(__name__)
 
 socketio = SocketIO(app)
-
+disconnect_timers_chess = {}
 rooms_boards = {}
 room_colors = {}
 board = chess.Board()
@@ -399,8 +400,8 @@ def on_join(data):
     username = session.get("user_id")
     room = data['room']  # room id will be passed from the client
     join_room(room)
-    print(room)
-    socketio.emit('message', {'msg': f'{username} has entered the room {room}.'}, room=room)
+    session["roomid"] = room
+    socketio.emit('message', {'player_joined': f'{username} has entered the room {room}.'}, room=room)
 
 # if we leave
 @socketio.on('leave')
@@ -663,3 +664,31 @@ def updatewin(winner:str, loser:str, game:str):
             db.close()  
     else:
         return "if you see this something went horribly", 402
+
+def forfeit_chess(roomid, username):
+    socketio.emit('player_forfeit', {'message': 'Oppenent forfeited'}, room=roomid)
+    r = room_colors[roomid]
+    if r['white'] == username:
+        updatewin(winner=r['black'], loser=r['white'], game="chess")
+    elif r['black'] == username:
+        updatewin(winner=r['white'], loser=r['black'], game="chess")
+
+@socketio.on('player_reconnected')
+def on_reconnect(data):
+    roomid = data.get('roomid')
+    if roomid in disconnect_timers_chess:
+        # Cancel the timer if the player reconnects within the time limit
+        disconnect_timers_chess[roomid].cancel()
+        del disconnect_timers_chess[roomid]
+        socketio.emit('opponent_reconnected', {'message': 'Opponent reconnected, timer canceled.'}, room=roomid)
+
+@socketio.on('disconnect')
+def on_disconnect():
+    roomid = session.get("roomid")
+    username = session.get("username")
+    if roomid:
+        # Start a 1-minute timer
+        timer = threading.Timer(60, forfeit_chess, args=(roomid, username,))
+        disconnect_timers_chess[roomid] = timer
+        timer.start()
+        socketio.emit('opponent_disconnected', {'message': 'Opponent disconnected. Timer started.'}, room=roomid)
