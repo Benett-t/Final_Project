@@ -156,13 +156,16 @@ def register():
                 
                 # begain transaction
                 db.execute("BEGIN TRANSACTION")
-
                 cursor.execute("INSERT INTO users (uuid, hash, username) VALUES(?, ?, ?)", (str(uuid4()), phash, username))
-
                 db.commit()
 
                 cursor.execute("SELECT uuid FROM users WHERE username = ?", (username,))
                 uuid = cursor.fetchone()
+                
+                db.execute("BEGIN TRANSACTION")
+                cursor.execute("INSERT INTO chess (username, wins, loss) VALUES(?, 0, 0)", (username,))
+                cursor.execute("INSERT INTO tictactoe (username, wins, loss) VALUES(?, 0, 0)", (username,))
+                db.commit()
 
                 session["user_id"] = uuid[0]
                 session["username"] = username
@@ -459,6 +462,7 @@ def handle_move(data):
             chess_move = chess.Move.from_uci(move + 'q')
             board.push(chess_move)
             if board.is_checkmate():
+                updatewin(room_colors[room]["white"], room_colors[room]["black"], "chess")
                 response_data.update({"success": True, "board_fen": board_fen, "is_checkmate": True, "white": True})
                 board.reset()
                 emit('move_response', response_data, room=room)
@@ -486,6 +490,7 @@ def handle_move(data):
             chess_move = chess.Move.from_uci(move + 'q')
             board.push(chess_move)
             if board.is_checkmate():
+                updatewin(room_colors[room]["black"], room_colors[room]["white"], "chess")
                 response_data.update({"success": True, "board_fen": board_fen, "is_checkmate": True, "black": True})
                 board.reset()
                 emit('move_response', response_data, room=room)
@@ -521,9 +526,10 @@ def handle_move(data):
 
             elif board.is_checkmate():
                 if board.outcome().winner == chess.WHITE:
+                    updatewin(room_colors[room]["white"], room_colors[room]["black"], "chess")                  
                     response_data.update({"success": True, "board_fen": board_fen, "is_checkmate": True, "white": True})
-
                 else:
+                    updatewin(room_colors[room]["black"], room_colors[room]["white"], "chess")
                     response_data.update({"success": True, "board_fen": board_fen, "is_checkmate": True, "black": True})
 
                 board.reset()
@@ -589,3 +595,50 @@ def croom():
             return redirect(url_for('chessboard', roomid=room))
         else:
             return render_template("searchchess.html")
+
+def updatewin(winner:str, loser:str, game:str):
+    # winner and loser = username of the person.
+    if winner == None:
+        return "bug", 402
+    elif loser == None:
+        return "bug", 402
+    
+    if game == "chess":
+        db = sqlite3.connect("users.db")
+        cursor = db.cursor()
+
+        try:
+            db.execute("BEGIN TRANSACTION")
+            cursor.execute("UPDATE chess SET wins = wins + 1 WHERE username = ?", (winner,))
+            cursor.execute("UPDATE chess SET loss = loss + 1 WHERE username = ?", (loser,))
+            db.commit()
+        except ValueError:     
+            return ValueError, 401
+        except sqlite3.Error as e:
+            # rollback if error
+            db.rollback()
+            return e, 401
+        finally:
+            cursor.close()
+            db.close()
+
+    elif game == "tictactoe":
+        db = sqlite3.connect("users.db")
+        cursor = db.cursor()
+
+        try:
+            db.execute("BEGIN TRANSACTION")
+            cursor.execute("UPDATE tictactoe SET wins = wins + 1 WHERE username = ?", (winner,))
+            cursor.execute("UPDATE tictactoe SET loss = loss + 1 WHERE username = ?", (loser,))
+            db.commit()
+        except ValueError:     
+            return ValueError, 401
+        except sqlite3.Error as e:
+            # rollback if error
+            db.rollback()
+            return e, 401
+        finally:
+            cursor.close()
+            db.close()  
+    else:
+        return "if you see this something went horribly", 402
