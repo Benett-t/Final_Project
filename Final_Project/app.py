@@ -61,15 +61,34 @@ def after_request(response):
 @login_required
 def index():
     #Landing page after login
+    if session["username"] == None:
+        return redirect("/login")
+    db = sqlite3.connect("users.db")
+    cursor = db.cursor()
+    try:
+        cursor.execute("SELECT wins, loss FROM chess WHERE username = ?", (session["username"],))
+        chesst = cursor.fetchone()
 
-    #Temporary simulate loged in user:
-    # nem birod  jinjaba be rakni mert ha nem letezik a session["user_id"] akkor hibat fog ki adni iffel meg kell csinalni
+        cursor.execute("SELECT wins, loss FROM tictactoe WHERE username = ?", (session["username"],))
+        tictactoet = cursor.fetchone()
+        
+    except ValueError:
+        return ValueError, 302
+    except sqlite3.Error as e:
+        return e, 302
+    finally:
+        cursor.close()
+        db.close()
 
-    # valahogy igy
-    if session.get("user_id") is None:
-        return render_template("index.html")
-    else:
-        return render_template("index.html")
+    if chesst == None:
+        return redirect("/login")
+    if tictactoet == None:
+        return redirect("/login")
+    chess_wins = chesst[0]       
+    chess_losses = chesst[1]     
+    tictac_wins = tictactoet[0]      
+    tictac_losses = tictactoet[1]     
+    return render_template("index.html", chess_wins=chess_wins, chess_losses=chess_losses, tictac_wins=tictac_wins, tictac_losses=tictac_losses)
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
