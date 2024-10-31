@@ -10,6 +10,7 @@ const capturesound = new Audio('/static/sounds/capture.wav');
 const errorsound = new Audio('/static/sounds/invalid.wav');
 
 const boardElement = document.getElementById('chessboard');
+let asd;
 let disconnectCountdown;
 let countdownTime = 60;  // 1 minute
 let selectedSquare = null;
@@ -575,6 +576,31 @@ socket.on('opponent_reconnected', function(data) {
 socket.on('player_forfeit', function(data) {
     clearInterval(disconnectCountdown);
     document.getElementById('opponent-timer').innerHTML = 'Opponent forfeited.';
+});
+
+socket.on('draw_noti', function(data) {
+    // Update the modal message
+    if (asd != 1) {
+        document.getElementById('notificationMessage').innerText = data.message;
+
+        // Show the notification modal
+        var notificationModal = new bootstrap.Modal(document.getElementById('notificationModal'));
+        notificationModal.show();
+    }
+    asd = 0;
+});
+
+// Handle the Draw confirmation
+document.getElementById('confirmDraw').addEventListener('click', function() {
+    asd = 1;
+    socket.emit('draw_request', { roomid: roomid });
+    $('#drawModal').modal('hide'); // Close the modal
+});
+
+// Handle the Forfeit confirmation
+document.getElementById('confirmForfeit').addEventListener('click', function() {
+    socket.emit('forfeit', { roomid: roomid });
+    $('#forfeitModal').modal('hide'); 
 });
 // Initial board render
 $(document).ready(function() {

@@ -692,3 +692,13 @@ def on_disconnect():
         disconnect_timers_chess[roomid] = timer
         timer.start()
         socketio.emit('opponent_disconnected', {'message': 'Opponent disconnected. Timer started.'}, room=roomid)
+
+@socketio.on('draw_request')
+def draw_request(data):
+    roomid = data["roomid"]
+    socketio.emit('draw_noti', {'message': 'Your opponent has requested a draw.'}, room=roomid)
+    
+@socketio.on('forfeit')
+def forfeite_chess(data):
+    roomid = data["roomid"]
+    forfeit_chess(roomid=roomid, username=session.get("username"))
