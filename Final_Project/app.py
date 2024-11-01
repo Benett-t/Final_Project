@@ -668,6 +668,7 @@ def updatewin(winner:str, loser:str, game:str):
 def forfeit_chess(roomid, username):
     socketio.emit('player_forfeit', {'message': 'Oppenent forfeited'}, room=roomid)
     r = room_colors[roomid]
+    rooms_boards[roomid].reset()
     if r['white'] == username:
         updatewin(winner=r['black'], loser=r['white'], game="chess")
     elif r['black'] == username:
