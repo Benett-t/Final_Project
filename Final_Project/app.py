@@ -187,8 +187,8 @@ def register():
                 uuid = cursor.fetchone()
                 
                 db.execute("BEGIN TRANSACTION")
-                cursor.execute("INSERT INTO chess (username, wins, loss, ties) VALUES(?, 0, 0)", (username,))
-                cursor.execute("INSERT INTO tictactoe (username, wins, loss, ties) VALUES(?, 0, 0)", (username,))
+                cursor.execute("INSERT INTO chess (username, wins, loss, ties) VALUES(?, 0, 0, 0)", (username,))
+                cursor.execute("INSERT INTO tictactoe (username, wins, loss, ties) VALUES(?, 0, 0, 0)", (username,))
                 db.commit()
 
                 session["user_id"] = uuid[0]
@@ -389,7 +389,7 @@ def tictac_move(data):
                     socketio.emit('game_over', {'winner': current_turn}, room=str(room_id))
 
                 elif check_tie(board):
-                    updatewin(winner=['player_2'], loser=game['player_1'], game="tictactoe", tie=True)
+                    updatewin(winner=game['player_2'], loser=game['player_1'], game="tictactoe", tie=True)
                     socketio.emit('game_over', {'winner': None}, room=str(room_id))
 
 
@@ -716,6 +716,8 @@ def updatewin(winner:str, loser:str, game:str, tie):
         try:
             db.execute("BEGIN TRANSACTION")
             if tie == True:
+                print("prossessing tie")
+                print(winner, loser)
                 cursor.execute("UPDATE tictactoe SET ties = ties + 1 WHERE username = ?", (winner,))
                 cursor.execute("UPDATE tictactoe SET ties = ties + 1 WHERE username = ?", (loser,))
             else:
