@@ -210,6 +210,16 @@ def register():
 @login_required
 def logout():
 
+    #delete user rooms in tictactoe
+    username = session.get("username")
+    
+    # Remove any rooms created by the logged-out user
+    rooms_to_delete = [room_id for room_id, game in tictactoe_games.items() if game['player_1'] == username]
+    
+    # Delete the rooms from the tictactoe_games dictionary
+    for room_id in rooms_to_delete:
+        del tictactoe_games[room_id]
+
     session.clear()
     return redirect("/login")
 
