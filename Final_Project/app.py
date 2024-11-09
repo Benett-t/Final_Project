@@ -1,4 +1,4 @@
-from flask import session, Flask, render_template, request, redirect, url_for
+from flask import session, Flask, render_template, request, redirect, url_for, flash
 from flask_session import Session
 from flask_socketio import SocketIO, emit, join_room, leave_room
 import sqlite3
@@ -218,7 +218,20 @@ def logout():
 def tictacrooms():
     global tictactoe_games
 
+    username = session.get("username")
+
+    # Check if the user has already created a room
+    user_created_room = None
+    for game in tictactoe_games.values():
+        if game['player_1'] == username:
+            user_created_room = game['room_id']
+            break
+
     if request.method == 'POST' and request.form.get("create"):
+        # If the user has already created a room, prevent creating a new one
+        if user_created_room:
+            flash("You have already created a room. You cannot create another one.")
+            return redirect(url_for('tictacrooms'))
 
         #to esnure unique ID
         room_id = random.randint(10000, 99999)
@@ -243,14 +256,26 @@ def tictacrooms():
         return redirect(url_for('tictactoe', room=room_id))
 
     elif request.method == 'POST' and request.form.get("join"):
+            # Check if the player is trying to join a room they have already joined
+            room_id = int(request.form.get("room_id"))
 
-        username = session.get("username")
+            # Check if the player is already in the room as player_1 or player_2
+            if tictactoe_games.get(room_id, {}).get('player_1') == username or tictactoe_games.get(room_id, {}).get('player_2') == username:
+                flash(f"You are already part of a game. You can rejoin it. <a href='/tictactoe/{room_id}'>Click here to rejoin the game</a>")
+                return redirect(url_for('tictacrooms'))
 
-        room_id = int(request.form.get("room_id"))
+            # Check if the player left the room and is trying to rejoin
+            if tictactoe_games.get(room_id, {}).get('player_1') == username or tictactoe_games.get(room_id, {}).get('player_2') == username:
+                flash("You have already joined this room.")
+                return redirect(url_for('tictactoe', room=room_id))
 
-        tictactoe_games[room_id]['player_2'] = username
-
-        return redirect(url_for('tictactoe', room=room_id))
+            # Join the room by assigning player 2 if available
+            if tictactoe_games.get(room_id, {}).get('player_2') == 'None':
+                tictactoe_games[room_id]['player_2'] = username
+                return redirect(url_for('tictactoe', room=room_id))
+            else:
+                flash("This room is already full.")
+                return redirect(url_for('tictacrooms'))
 
 
     return render_template("tictacrooms.html", tictactoe_games=tictactoe_games)
@@ -333,26 +358,43 @@ def tictac_move(data):
         board = game['board_state']
         current_turn = game['current_turn']
 
-        if board[V][H] == ' ':
-            # Update board with the player's move
-            board[V][H] = current_turn
-            game['current_turn'] = 'O' if current_turn == 'X' else 'X'  # Switch turns
+        username = session.get("username")
+        is_player_1 = username == game['player_1']
+        is_player_2 = username == game['player_2']
 
-            # Emit the updated board and turn to all clients in the room
-            socketio.emit('board_update', {'board': board, 'current_turn': game['current_turn']}, room=str(room_id))
-            print(f"Board update emitted to room {room_id} with turn {game['current_turn']} and board:")
-            print(board)  # Debug print to confirm board state
+        if (current_turn == 'X' and is_player_1) or (current_turn == 'O' and is_player_2):
+            if board[V][H] == ' ':
+                board[V][H] = current_turn
+                game['current_turn'] = 'O' if current_turn == 'X' else 'X'
 
-            # Check for a win or tie
-            if check_win(board):
-                socketio.emit('game_over', {'winner': current_turn}, room=str(room_id))
-            elif check_tie(board):
-                socketio.emit('game_over', {'winner': None}, room=str(room_id))
+                socketio.emit('board_update', {'board': board, 'current_turn': game['current_turn']}, room=str(room_id))
+
+                if check_win(board):
+                    socketio.emit('game_over', {'winner': current_turn}, room=str(room_id))
+                    
+
+                elif check_tie(board):
+                    socketio.emit('game_over', {'winner': None}, room=str(room_id))
+
+
+            else:
+                socketio.emit('invalid_move', {'message': 'Invalid move! Cell already taken.'}, room=request.sid)
         else:
-            socketio.emit('invalid_move', {'message': 'Invalid move! Cell already taken.'}, room=request.sid)
+            socketio.emit('invalid_move', {'message': "It's not your turn!"}, room=request.sid)
 
     print(tictactoe_games[room_id])  # Print entire game state for debugging
 
+@socketio.on('restart_game')
+@login_required
+def restart_game(data):
+    room_id = int(data['room_id'])
+    
+    # Remove the game from the dictionary after the reset
+    if room_id in tictactoe_games:
+        del tictactoe_games[room_id]
+    
+    # Emit the redirect event to the client
+    socketio.emit('restart_game', {'url': url_for('tictacrooms')}, room=str(room_id))
 
 
 @app.route("/chessboard/<roomid>")

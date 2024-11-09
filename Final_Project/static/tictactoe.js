@@ -29,7 +29,11 @@ socket.on('game_over', (data) => {
         winningText.textContent = "It's a tie!";
     }
     document.querySelector('.winning-message').classList.add('show');
+
+
 });
+
+
 
 // Listen for invalid move events
 socket.on('invalid_move', (data) => {
@@ -79,17 +83,20 @@ document.getElementById('restart-button').addEventListener('click', () => {
     document.querySelector('.winning-message').classList.remove('show');  // Hide the winning message
 });
 
-function setBoardHoverClass(currentTurn) {
-    boardElement.classList.remove(PLAYER_X_CLASS);
-    boardElement.classList.remove(PLAYER_O_CLASS);
-    
-    if (currentTurn === 'X') {
-        boardElement.classList.add(PLAYER_X_CLASS);
-    } else if (currentTurn === 'O') {
-        boardElement.classList.add(PLAYER_O_CLASS);
-    }
-}
+socket.on('restart_game', (data) => {
+    window.location.href = data.url;  // Redirect to the tictacrooms page
+});
 
-function updateTurn(currentTurn) {
-    setBoardHoverClass(currentTurn);
+function setBoardHoverClass(currentTurn) {
+    const board = document.querySelector('.board');
+    
+    // Remove both 'x' and 'circle' classes from the board
+    board.classList.remove('x', 'circle');
+    
+    // Add the class for the current player's turn
+    if (currentTurn === 'X') {
+        board.classList.add('x');  // Enable hover effect for 'X'
+    } else if (currentTurn === 'O') {
+        board.classList.add('circle');  // Enable hover effect for 'O'
+    }
 }
