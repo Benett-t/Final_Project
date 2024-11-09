@@ -4,6 +4,11 @@ const socket = io.connect();
 // Get the room ID from the HTML data attribute
 const roomId = document.getElementById('room-info').dataset.roomId;
 
+const boardElement = document.getElementById('board');
+const PLAYER_X_CLASS = 'x'; // Matches your CSS class for 'X'
+const PLAYER_O_CLASS = 'circle';
+
+
 // Join the room
 socket.emit('join_room', { room_id: roomId });
 
@@ -11,6 +16,7 @@ socket.emit('join_room', { room_id: roomId });
 socket.on('board_update', (data) => {
     console.log("Board update received:", data);  // Debug log to track incoming board updates
     updateBoard(data.board, data.current_turn);   // Update board UI with latest data
+    setBoardHoverClass(data.current_turn);
 });
 
 // Listen for game over events
@@ -38,11 +44,16 @@ function updateBoard(board, currentTurn) {
         row.forEach((cellValue, colIndex) => {
             const cell = document.querySelector(`.cell[data-row="${rowIndex}"][data-col="${colIndex}"]`);
             if (cell) {
-                cell.textContent = cellValue;  // Update the cell with 'X' or 'O'
-                console.log(`Updated cell [${rowIndex}][${colIndex}] to: ${cellValue}`); // Debugging line
+                cell.classList.remove(PLAYER_X_CLASS, PLAYER_O_CLASS);
+                if (cellValue === 'X') {
+                    cell.classList.add(PLAYER_X_CLASS);
+                } else if (cellValue === 'O') {
+                    cell.classList.add(PLAYER_O_CLASS);
+                }
             }
         });
     });
+    setBoardHoverClass(currentTurn);
     // Update the turn display
     document.getElementById('turn').textContent = `Current turn: ${currentTurn}`;
 }
@@ -67,3 +78,18 @@ document.getElementById('restart-button').addEventListener('click', () => {
     socket.emit('restart_game', { room_id: roomId });  // Emit a restart request to the server
     document.querySelector('.winning-message').classList.remove('show');  // Hide the winning message
 });
+
+function setBoardHoverClass(currentTurn) {
+    boardElement.classList.remove(PLAYER_X_CLASS);
+    boardElement.classList.remove(PLAYER_O_CLASS);
+    
+    if (currentTurn === 'X') {
+        boardElement.classList.add(PLAYER_X_CLASS);
+    } else if (currentTurn === 'O') {
+        boardElement.classList.add(PLAYER_O_CLASS);
+    }
+}
+
+function updateTurn(currentTurn) {
+    setBoardHoverClass(currentTurn);
+}
