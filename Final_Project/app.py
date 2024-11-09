@@ -69,10 +69,10 @@ def index():
     db = sqlite3.connect("users.db")
     cursor = db.cursor()
     try:
-        cursor.execute("SELECT wins, loss FROM chess WHERE username = ?", (username,))
+        cursor.execute("SELECT wins, loss, ties FROM chess WHERE username = ?", (username,))
         chesst = cursor.fetchone()
 
-        cursor.execute("SELECT wins, loss FROM tictactoe WHERE username = ?", (username,))
+        cursor.execute("SELECT wins, loss, ties FROM tictactoe WHERE username = ?", (username,))
         tictactoet = cursor.fetchone()
         
     except ValueError:
@@ -88,10 +88,12 @@ def index():
     if tictactoet == None:
         return redirect("/login")
     chess_wins = chesst[0]       
-    chess_losses = chesst[1]     
+    chess_losses = chesst[1]  
+    chess_ties = chesst[2]   
     tictac_wins = tictactoet[0]      
-    tictac_losses = tictactoet[1]     
-    return render_template("index.html", chess_wins=chess_wins, chess_losses=chess_losses, tictac_wins=tictac_wins, tictac_losses=tictac_losses, username=username)
+    tictac_losses = tictactoet[1] 
+    tictac_ties = tictactoet[2]    
+    return render_template("index.html", chess_wins=chess_wins, chess_losses=chess_losses, tictac_wins=tictac_wins, tictac_losses=tictac_losses, username=username, chess_ties=chess_ties, tictac_ties=tictac_ties)
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -185,8 +187,8 @@ def register():
                 uuid = cursor.fetchone()
                 
                 db.execute("BEGIN TRANSACTION")
-                cursor.execute("INSERT INTO chess (username, wins, loss) VALUES(?, 0, 0)", (username,))
-                cursor.execute("INSERT INTO tictactoe (username, wins, loss) VALUES(?, 0, 0)", (username,))
+                cursor.execute("INSERT INTO chess (username, wins, loss, ties) VALUES(?, 0, 0)", (username,))
+                cursor.execute("INSERT INTO tictactoe (username, wins, loss, ties) VALUES(?, 0, 0)", (username,))
                 db.commit()
 
                 session["user_id"] = uuid[0]
@@ -381,12 +383,13 @@ def tictac_move(data):
 
                 if check_win(board):
                     if current_turn == 'X':
-                        updatewin(winner=is_player_1, loser=is_player_2, game="tictactoe")
+                        updatewin(winner=game['player_1'], loser=game['player_2'], game="tictactoe")
                     elif current_turn == 'O':
-                        updatewin(winner=is_player_2, loser=is_player_1, game="tictactoe")
+                        updatewin(winner=['player_2'], loser=game['player_1'], game="tictactoe")
                     socketio.emit('game_over', {'winner': current_turn}, room=str(room_id))
 
                 elif check_tie(board):
+                    updatewin(winner=['player_2'], loser=game['player_1'], game="tictactoe", tie=True)
                     socketio.emit('game_over', {'winner': None}, room=str(room_id))
 
 
@@ -553,6 +556,7 @@ def handle_move(data):
                 return
             
             elif board.is_stalemate():
+                updatewin(room_colors[room]["white"], room_colors[room]["black"], "chess", True)
                 board.reset()
                 response_data.update({"success": True, "stalemate": True})
                 emit('move_response', response_data, room=room)
@@ -580,6 +584,7 @@ def handle_move(data):
                 socketio.emit('update_board', response_data, room=room)
                 return
             elif board.is_stalemate():
+                updatewin(room_colors[room]["white"], room_colors[room]["black"], "chess", True)
                 board.reset()
                 response_data.update({"success": True, "stalemate": True})
                 emit('move_response', response_data, room=room)
@@ -595,6 +600,7 @@ def handle_move(data):
             board.push(chess_move)
 
             if board.is_stalemate():
+                updatewin(room_colors[room]["white"], room_colors[room]["black"], "chess", True)
                 board.reset()
                 response_data.update({"success": True, "stalemate": True})
                 emit('move_response', response_data, room=room)
@@ -673,7 +679,7 @@ def croom():
         else:
             return render_template("searchchess.html")
 
-def updatewin(winner:str, loser:str, game:str):
+def updatewin(winner:str, loser:str, game:str, tie):
     # winner and loser = username of the person.
     if winner == None:
         return "bug", 402
@@ -686,8 +692,12 @@ def updatewin(winner:str, loser:str, game:str):
 
         try:
             db.execute("BEGIN TRANSACTION")
-            cursor.execute("UPDATE chess SET wins = wins + 1 WHERE username = ?", (winner,))
-            cursor.execute("UPDATE chess SET loss = loss + 1 WHERE username = ?", (loser,))
+            if tie == True:
+                cursor.execute("UPDATE chess SET ties = ties + 1 WHERE username = ?", (winner,))
+                cursor.execute("UPDATE chess SET ties = ties + 1 WHERE username = ?", (loser,))
+            else:
+                cursor.execute("UPDATE chess SET wins = wins + 1 WHERE username = ?", (winner,))
+                cursor.execute("UPDATE chess SET loss = loss + 1 WHERE username = ?", (loser,))
             db.commit()
         except ValueError:     
             return ValueError, 401
@@ -705,8 +715,12 @@ def updatewin(winner:str, loser:str, game:str):
 
         try:
             db.execute("BEGIN TRANSACTION")
-            cursor.execute("UPDATE tictactoe SET wins = wins + 1 WHERE username = ?", (winner,))
-            cursor.execute("UPDATE tictactoe SET loss = loss + 1 WHERE username = ?", (loser,))
+            if tie == True:
+                cursor.execute("UPDATE tictactoe SET ties = ties + 1 WHERE username = ?", (winner,))
+                cursor.execute("UPDATE tictactoe SET ties = ties + 1 WHERE username = ?", (loser,))
+            else:
+                cursor.execute("UPDATE tictactoe SET wins = wins + 1 WHERE username = ?", (winner,))
+                cursor.execute("UPDATE tictactoe SET loss = loss + 1 WHERE username = ?", (loser,))
             db.commit()
         except ValueError:     
             return ValueError, 401
@@ -762,5 +776,6 @@ def forfeite_chess(data):
 @socketio.on('draw_accept')
 def draw_chess(data):
     roomid = data["roomid"]
+    updatewin(room_colors[roomid]["white"], room_colors[roomid]["black"], "chess", True)
     rooms_boards[roomid].reset()
     socketio.emit('draw_accepted', {'message': 'Game drawn.'}, room=roomid)
