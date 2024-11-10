@@ -229,6 +229,12 @@ body {
 	background: radial-gradient(var(--color-set) 60%, transparent 60%);
 }
 
+/* Remove hover if not active turn */
+.board:not(.x):not(.circle) .cell:hover {
+    background: none;
+}
+
+
 .winning-message {
 	display: none;
 	position: fixed;

@@ -383,14 +383,16 @@ def tictac_move(data):
 
                 if check_win(board):
                     if current_turn == 'X':
+                        socketio.emit('game_over', {'winner': current_turn}, room=str(room_id))
                         updatewin(winner=game['player_1'], loser=game['player_2'], game="tictactoe")
                     elif current_turn == 'O':
+                        socketio.emit('game_over', {'winner': current_turn}, room=str(room_id))
                         updatewin(winner=['player_2'], loser=game['player_1'], game="tictactoe")
-                    socketio.emit('game_over', {'winner': current_turn}, room=str(room_id))
-
+                        
                 elif check_tie(board):
-                    updatewin(winner=game['player_2'], loser=game['player_1'], game="tictactoe", tie=True)
                     socketio.emit('game_over', {'winner': None}, room=str(room_id))
+                    updatewin(winner=game['player_2'], loser=game['player_1'], game="tictactoe", tie=True)
+                    
 
 
             else:

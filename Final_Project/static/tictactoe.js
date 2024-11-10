@@ -89,14 +89,14 @@ socket.on('restart_game', (data) => {
 
 function setBoardHoverClass(currentTurn) {
     const board = document.querySelector('.board');
-    
-    // Remove both 'x' and 'circle' classes from the board
-    board.classList.remove('x', 'circle');
-    
-    // Add the class for the current player's turn
+
+    // Clear existing hover classes
+    board.classList.remove(PLAYER_X_CLASS, PLAYER_O_CLASS);
+
+    // Add hover effect only for the current player's turn
     if (currentTurn === 'X') {
-        board.classList.add('x');  // Enable hover effect for 'X'
+        board.classList.add(PLAYER_X_CLASS); // Enable hover for 'X'
     } else if (currentTurn === 'O') {
-        board.classList.add('circle');  // Enable hover effect for 'O'
+        board.classList.add(PLAYER_O_CLASS); // Enable hover for 'O'
     }
 }
