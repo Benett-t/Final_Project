@@ -383,15 +383,15 @@ def tictac_move(data):
 
                 if check_win(board):
                     if current_turn == 'X':
+                        updatewin(winner=game['player_1'], loser=game['player_2'], game="tictactoe", tie=False)
                         socketio.emit('game_over', {'winner': current_turn}, room=str(room_id))
-                        updatewin(winner=game['player_1'], loser=game['player_2'], game="tictactoe")
                     elif current_turn == 'O':
+                        updatewin(winner=['player_2'], loser=game['player_1'], game="tictactoe", tie=False)
                         socketio.emit('game_over', {'winner': current_turn}, room=str(room_id))
-                        updatewin(winner=['player_2'], loser=game['player_1'], game="tictactoe")
                         
                 elif check_tie(board):
-                    socketio.emit('game_over', {'winner': None}, room=str(room_id))
                     updatewin(winner=game['player_2'], loser=game['player_1'], game="tictactoe", tie=True)
+                    socketio.emit('game_over', {'winner': None}, room=str(room_id))
                     
 
 
@@ -544,7 +544,7 @@ def handle_move(data):
             chess_move = chess.Move.from_uci(move + 'q')
             board.push(chess_move)
             if board.is_checkmate():
-                updatewin(room_colors[room]["white"], room_colors[room]["black"], "chess")
+                updatewin(room_colors[room]["white"], room_colors[room]["black"], "chess", False)
                 response_data.update({"success": True, "board_fen": board_fen, "is_checkmate": True, "white": True})
                 board.reset()
                 emit('move_response', response_data, room=room)
@@ -573,7 +573,7 @@ def handle_move(data):
             chess_move = chess.Move.from_uci(move + 'q')
             board.push(chess_move)
             if board.is_checkmate():
-                updatewin(room_colors[room]["black"], room_colors[room]["white"], "chess")
+                updatewin(room_colors[room]["black"], room_colors[room]["white"], "chess", False)
                 response_data.update({"success": True, "board_fen": board_fen, "is_checkmate": True, "black": True})
                 board.reset()
                 emit('move_response', response_data, room=room)
@@ -611,10 +611,10 @@ def handle_move(data):
 
             elif board.is_checkmate():
                 if board.outcome().winner == chess.WHITE:
-                    updatewin(room_colors[room]["white"], room_colors[room]["black"], "chess")                  
+                    updatewin(room_colors[room]["white"], room_colors[room]["black"], "chess", False)                  
                     response_data.update({"success": True, "board_fen": board_fen, "is_checkmate": True, "white": True})
                 else:
-                    updatewin(room_colors[room]["black"], room_colors[room]["white"], "chess")
+                    updatewin(room_colors[room]["black"], room_colors[room]["white"], "chess", False)
                     response_data.update({"success": True, "board_fen": board_fen, "is_checkmate": True, "black": True})
 
                 board.reset()
