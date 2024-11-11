@@ -8,7 +8,7 @@ const boardElement = document.getElementById('board');
 const PLAYER_X_CLASS = 'x'; // Matches your CSS class for 'X'
 const PLAYER_O_CLASS = 'circle';
 const Errorsfx = new Audio('/static/sounds/invalid.wav');
-Errorsfx.volume = 0.7
+Errorsfx.volume = 0.7;
 
 // Join the room
 socket.emit('join_room', { room_id: roomId });

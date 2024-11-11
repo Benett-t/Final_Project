@@ -8,6 +8,7 @@ const checksound = new Audio('/static/sounds/check.wav');
 const matesound = new Audio('/static/sounds/checkmate.wav');
 const capturesound = new Audio('/static/sounds/capture.wav');
 const errorsound = new Audio('/static/sounds/invalid.wav');
+errorsound.volume = 0.7;
 
 const boardElement = document.getElementById('chessboard');
 let asd;
