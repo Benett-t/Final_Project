@@ -599,8 +599,10 @@ def handle_move(data):
 
 
         elif chess_move in board.legal_moves:
-            board.push(chess_move)
+            if board.is_en_passant(chess_move):
+                response_data.update({"enpassant": True})
 
+            board.push(chess_move)
             if board.is_stalemate():
                 updatewin(room_colors[room]["white"], room_colors[room]["black"], "chess", True)
                 board.reset()

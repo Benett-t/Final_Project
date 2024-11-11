@@ -323,6 +323,18 @@ socket.on('update_board', function(data) {
             updateBoard('a8d8');
             updateCheckSquares(data.bcheck, data.wcheck, data.is_checkmate, data.black, data.white);
         }
+        else if (data.enpassant) {
+            updateBoard(data.move, data.is_checkmate, data.white, data.black, data.wpromotion, data.bpromotion, data.stalemate);
+            
+            const fromSquare = data.move.slice(0, 2);
+            const toSquare = data.move.slice(2);
+            let captureSquare = toSquare[0] + (parseInt(fromSquare.charAt(1))).toString();
+            const captureElement = document.querySelector(`[data-square='${captureSquare}']`);
+            if (captureElement) {
+                captureElement.innerHTML = ''; // Clear the captured pawn
+                delete boardState[captureSquare];
+            }
+        }
         // Update the board based on the opponent's move
         else {
             updateBoard(data.move, data.is_checkmate, data.white, data.black, data.wpromotion, data.bpromotion, data.stalemate);
