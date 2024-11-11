@@ -743,9 +743,9 @@ def forfeit_chess(roomid, username):
     r = room_colors[roomid]
     rooms_boards[roomid].reset()
     if r['white'] == username:
-        updatewin(winner=r['black'], loser=r['white'], game="chess")
+        updatewin(winner=r['black'], loser=r['white'], game="chess", tie=False)
     elif r['black'] == username:
-        updatewin(winner=r['white'], loser=r['black'], game="chess")
+        updatewin(winner=r['white'], loser=r['black'], game="chess", tie=False)
 
 @socketio.on('player_reconnected')
 def on_reconnect(data):
