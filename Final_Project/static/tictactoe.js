@@ -7,7 +7,10 @@ const roomId = document.getElementById('room-info').dataset.roomId;
 const boardElement = document.getElementById('board');
 const PLAYER_X_CLASS = 'x'; // Matches your CSS class for 'X'
 const PLAYER_O_CLASS = 'circle';
-
+const Errorsfx = new Audio('/static/sounds/invalid.wav');
+Errorsfx.volume = 0.7
+const Movesfx = new Audio('/static/sounds/move.wav');
+Movesfx.volume = 0.7
 
 // Join the room
 socket.emit('join_room', { room_id: roomId });
@@ -15,6 +18,8 @@ socket.emit('join_room', { room_id: roomId });
 // Listen for board updates from the server
 socket.on('board_update', (data) => {
     console.log("Board update received:", data);  // Debug log to track incoming board updates
+    Movesfx.currentTime = 0;
+    Movesfx.play()
     updateBoard(data.board, data.current_turn);   // Update board UI with latest data
     setBoardHoverClass(data.current_turn);
 });
@@ -38,7 +43,8 @@ socket.on('game_over', (data) => {
 // Listen for invalid move events
 socket.on('invalid_move', (data) => {
     console.log("Invalid move:", data.message);  // Log invalid move message
-    alert(data.message);  // Show an alert for invalid moves
+    Errorsfx.currentTime = 0;  // reset sfx
+    Errorsfx.play() // play sfx
 });
 
 // Function to update the board UI based on the server's board data
